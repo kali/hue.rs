@@ -11,6 +11,9 @@ pub fn discover_hue_bridge() -> Result<String, HueError> {
 
     let objects:&json::Array =
         try!(j.as_array().ok_or(HueError::Error("Expected an array".to_string())));
+    if objects.len() == 0 {
+        return HueError::wrap("expected non-empty array");
+    }
     let ref object = objects[0];
 
     let ip = try!(object.find("internalipaddress")

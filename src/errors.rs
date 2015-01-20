@@ -46,6 +46,12 @@ pub enum HueError {
     Error(String)
 }
 
+impl HueError {
+    pub fn wrap<O> (a:&str) -> ::std::result::Result<O, HueError> {
+        Err(HueError::Error(a.to_string()))
+    }
+}
+
 impl error::FromError<json::ParserError> for HueError {
     fn from_error(err: json::ParserError) -> HueError {
         HueError::JsonError(err)
