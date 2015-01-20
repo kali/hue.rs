@@ -1,25 +1,6 @@
 use hyper;
 use rustc_serialize::json;
-use std::error;
-
-#[derive(Show)]
-pub enum HueError {
-    JsonError(json::ParserError),
-    HttpError(hyper::HttpError),
-    Error(String)
-}
-
-impl error::FromError<json::ParserError> for HueError {
-    fn from_error(err: json::ParserError) -> HueError {
-        HueError::JsonError(err)
-    }
-}
-
-impl error::FromError<hyper::HttpError> for HueError {
-    fn from_error(err: hyper::HttpError) -> HueError {
-        HueError::HttpError(err)
-    }
-}
+use errors::HueError;
 
 pub fn discover_hue_bridge() -> Result<String, HueError> {
     let mut client = hyper::Client::new();
@@ -34,10 +15,5 @@ pub fn discover_hue_bridge() -> Result<String, HueError> {
 
     let ip = try!(object.find("internalipaddress")
         .ok_or(HueError::Error("Expected internalipaddress".to_string())));
-    Ok(ip.to_string())
-}
-
-#[test]
-fn it_does_find_the_bridge() {
-    discover_hue_bridge();
+    Ok(ip.as_string().unwrap().to_string())
 }

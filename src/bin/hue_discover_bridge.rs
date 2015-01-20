@@ -1,6 +1,7 @@
 extern crate hue;
+use hue::bridge::Bridge;
 
 fn main() {
-    let bridge = hue::disco::discover_hue_bridge().unwrap();
-    println!("Hue bridge found: {}", bridge);
+    let bridge = Bridge::discover().unwrap();
+    println!("Hue bridge found: {:?}", bridge);
 }
