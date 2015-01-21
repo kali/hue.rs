@@ -9,18 +9,27 @@ use errors::HueError;
 use errors::AppError;
 use std::collections::BTreeMap;
 
-#[derive(Show,Clone)]
+#[derive(Show,Copy,Clone,RustcDecodable)]
+pub struct LightState {
+    pub on: bool,
+    pub bri: u8,
+    pub hue: u16,
+    pub sat: u8
+}
+
+#[derive(Show,Clone,RustcDecodable)]
 pub struct Light {
-    name: String,
-    modelid: String,
-    swversion: String,
-    uniqueid: String,
+    pub name: String,
+    pub modelid: String,
+    pub swversion: String,
+    pub uniqueid: String,
+    pub state: LightState,
 }
 
 #[derive(Show,Clone)]
 pub struct IdentifiedLight {
-    id: usize,
-    light: Light,
+    pub id: usize,
+    pub light: Light,
 }
 
 #[derive(Show)]
@@ -28,60 +37,6 @@ pub struct Bridge {
     ip: String,
     username: Option<String>,
 }
-
-impl /* ::rustc_serialize::Decodable for */ Light {
-    fn decode<__D: ::rustc_serialize::Decoder>(__arg_0: &mut __D) -> ::std::result::Result<Light, __D::Error> {
-        __arg_0.read_struct("Light", 4us, |_d|
-            ::std::result::Result::Ok(Light{name:
-                              match _d.read_struct_field("name",
-                                                         0us,
-                                                         ::rustc_serialize::Decodable::decode)
-                                  {
-                                  Ok(__try_var)
-                                  =>
-                                  __try_var,
-                                  Err(__try_var)
-                                  =>
-                                  return Err(__try_var),
-                              },
-                          modelid:
-                              match _d.read_struct_field("modelid",
-                                                         1us,
-                                                         ::rustc_serialize::Decodable::decode)
-                                  {
-                                  Ok(__try_var)
-                                  =>
-                                  __try_var,
-                                  Err(__try_var)
-                                  =>
-                                  return Err(__try_var),
-                              },
-                          swversion:
-                              match _d.read_struct_field("swversion",
-                                                         2us,
-                                                         ::rustc_serialize::Decodable::decode)
-                                  {
-                                  Ok(__try_var)
-                                  =>
-                                  __try_var,
-                                  Err(__try_var)
-                                  =>
-                                  return Err(__try_var),
-                              },
-                          uniqueid:
-                              match _d.read_struct_field("uniqueid",
-                                                         3us,
-                                                         ::rustc_serialize::Decodable::decode)
-                                  {
-                                  Ok(__try_var)
-                                  =>
-                                  __try_var,
-                                  Err(__try_var)
-                                  =>
-                                  return Err(__try_var),
-                              },}))
-        }
-    }
 
 impl Bridge {
     #[allow(dead_code)]
@@ -127,7 +82,7 @@ impl Bridge {
         let json = try!(::tools::from_reader(&mut resp));
         let lights:Vec<Result<IdentifiedLight,_>> = json.as_object().unwrap().iter().map( |(k,v)| {
             let mut decoder = json::Decoder::new(v.clone());
-            Light::decode(&mut decoder).map( |l|
+            <Light as Decodable>::decode(&mut decoder).map( |l|
                 IdentifiedLight{ id: k.parse().unwrap(), light: l }
             )
         }).collect();

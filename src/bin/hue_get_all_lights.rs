@@ -9,6 +9,14 @@ fn main() {
         return
     }
     let bridge = ::hue::bridge::Bridge::discover_required().with_user(args[1].clone());
-    let lights = bridge.get_all_lights();
-    println!("{:?}", lights);
+    match bridge.get_all_lights() {
+        Ok(lights) => {
+            for ref l in lights.iter() {
+                println!("{:2} {:20} {:5} {:3} {:5} {:3}", l.id, l.light.name,
+                    if l.light.state.on {"on"} else {"off"} ,
+                    l.light.state.bri, l.light.state.hue, l.light.state.sat);
+            }
+        },
+        Err(err) => panic!(err)
+    }
 }
