@@ -71,4 +71,9 @@ impl error::FromError<hyper::HttpError> for HueError {
     }
 }
 
+impl error::FromError<::core::fmt::Error> for HueError {
+    fn from_error(err: ::core::fmt::Error) -> HueError {
+        HueError::Error("core format error".to_string())
+    }
+}
 

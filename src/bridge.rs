@@ -1,13 +1,13 @@
 use hyper::Client;
 use hyper::client::Body;
-use hyper::method::Method;
 use hyper::client::response::Response;
 use disco;
 use rustc_serialize::json;
 use rustc_serialize::json::Json;
+use rustc_serialize::{ Decodable, Encodable };
 use errors::HueError;
 use errors::AppError;
-use std::collections::BTreeMap;
+use regex::Regex;
 
 #[derive(Show,Copy,Clone,RustcDecodable)]
 pub struct LightState {
@@ -30,6 +30,27 @@ pub struct Light {
 pub struct IdentifiedLight {
     pub id: usize,
     pub light: Light,
+}
+
+#[derive(Show,Clone,Copy,RustcEncodable,RustcDecodable)]
+pub struct CommandLight {
+    pub on:Option<bool>,
+    pub bri:Option<u8>,
+    pub hue:Option<u16>,
+    pub sat:Option<u8>,
+    pub transitiontime:Option<u16>,
+}
+
+impl CommandLight {
+    pub fn empty() -> CommandLight {
+        CommandLight { on:None, bri:None, hue:None, sat:None, transitiontime:None }
+    }
+    pub fn on() -> CommandLight {
+        CommandLight { on:Some(true), ..CommandLight::empty() }
+    }
+    pub fn off() -> CommandLight {
+        CommandLight { on:Some(false), ..CommandLight::empty() }
+    }
 }
 
 #[derive(Show)]
@@ -74,7 +95,6 @@ impl Bridge {
     }
 
     pub fn get_all_lights(&self) -> Result<Vec<IdentifiedLight>,HueError> {
-        use rustc_serialize::Decodable;
         let url = format!("http://{}/api/{}/lights",
             self.ip, self.username.clone().unwrap());
         let mut client = Client::new();
@@ -97,9 +117,26 @@ impl Bridge {
         }
     }
 
+    pub fn set_light_state(&self, light:usize, command:CommandLight) -> Result<Json, HueError> {
+        let url = format!("http://{}/api/{}/lights/{}/state",
+            self.ip, self.username.clone().unwrap(), light);
+        let body = json::encode(&command);
+        let re1 = Regex::new("\"[a-z]*\":null").unwrap();
+        let cleaned1 = re1.replace_all(body.as_slice(),"");
+        let re2 = Regex::new(",+").unwrap();
+        let cleaned2 = re2.replace_all(cleaned1.as_slice(),",");
+        let re3 = Regex::new(",\\}").unwrap();
+        let cleaned3 = re3.replace_all(cleaned2.as_slice(),"}");
+        let re3 = Regex::new("\\{,").unwrap();
+        let cleaned4 = re3.replace_all(cleaned3.as_slice(),"{");
+        let mut client = Client::new();
+        let mut resp = try!(client.put(url.as_slice())
+            .body(Body::BufBody(cleaned4.as_bytes(), cleaned4.as_bytes().len())).send());
+        self.parse_write_resp(&mut resp)
+    }
+
     fn parse_write_resp(&self, resp:&mut Response) -> Result<Json,HueError> {
         let json = try!(::tools::from_reader(resp));
-        println!("{}", json);
         let objects = try!(json.as_array()
             .ok_or(HueError::Error("expected array".to_string())));
         if objects.len() == 0 {
