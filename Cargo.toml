@@ -5,5 +5,5 @@ version = "0.0.1"
 authors = ["Mathieu Poumeyrol <kali@zoy.org>"]
 
 [dependencies]
-hyper = "0.1.1"
+hyper = "0.1.4"
 rustc-serialize = "0.2"
