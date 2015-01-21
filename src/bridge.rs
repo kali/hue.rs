@@ -3,7 +3,6 @@ use hyper::client::Body;
 use hyper::method::Method;
 use hyper::client::response::Response;
 use disco;
-use rustc_serialize::Decodable;
 use rustc_serialize::json;
 use rustc_serialize::json::Json;
 use errors::HueError;
@@ -18,13 +17,19 @@ pub struct Light {
     uniqueid: String,
 }
 
+#[derive(Show,Clone)]
+pub struct IdentifiedLight {
+    id: usize,
+    light: Light,
+}
+
 #[derive(Show)]
 pub struct Bridge {
     ip: String,
     username: Option<String>,
 }
 
-impl /*::rustc_serialize::Decodable for*/ Light {
+impl /* ::rustc_serialize::Decodable for */ Light {
     fn decode<__D: ::rustc_serialize::Decoder>(__arg_0: &mut __D) -> ::std::result::Result<Light, __D::Error> {
         __arg_0.read_struct("Light", 4us, |_d|
             ::std::result::Result::Ok(Light{name:
@@ -113,21 +118,27 @@ impl Bridge {
         self.parse_write_resp(&mut resp)
     }
 
-    pub fn get_all_lights(&self) -> Result<Vec<Light>,HueError> {
+    pub fn get_all_lights(&self) -> Result<Vec<IdentifiedLight>,HueError> {
         use rustc_serialize::Decodable;
         let url = format!("http://{}/api/{}/lights",
             self.ip, self.username.clone().unwrap());
         let mut client = Client::new();
         let mut resp = try!(client.get(url.as_slice()).send());
         let json = try!(::tools::from_reader(&mut resp));
-        let lights:Vec<Result<Light,json::DecoderError>> = json.as_object().unwrap().iter().map( |(k,v)| {
+        let lights:Vec<Result<IdentifiedLight,_>> = json.as_object().unwrap().iter().map( |(k,v)| {
             let mut decoder = json::Decoder::new(v.clone());
-            Light::decode(&mut decoder)
+            Light::decode(&mut decoder).map( |l|
+                IdentifiedLight{ id: k.parse().unwrap(), light: l }
+            )
         }).collect();
         let error = lights.iter().find( |r| r.is_err() );
         match error {
             Some(e) => Err(HueError::JsonDecoderError(e.clone().unwrap_err())),
-            None => Ok(lights.iter().cloned().map( |l| l.unwrap() ).collect())
+            None => {
+                let mut v:Vec<IdentifiedLight> = lights.iter().cloned().map( |l| l.unwrap() ).collect();
+                v.sort_by( |a,b| a.id.cmp(&b.id) );
+                Ok(v)
+            }
         }
     }
 

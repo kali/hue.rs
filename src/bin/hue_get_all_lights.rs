@@ -1,7 +1,6 @@
 #![allow(unstable)]
 extern crate hue;
 use std::os;
-use hue::errors::HueError;
 
 fn main() {
     let args = os::args();
