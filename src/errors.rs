@@ -40,7 +40,8 @@ impl AppError {
 
 #[derive(Show)]
 pub enum HueError {
-    JsonError(json::ParserError),
+    JsonParserError(json::ParserError),
+    JsonDecoderError(json::DecoderError),
     HttpError(hyper::HttpError),
     BridgeError(AppError),
     Error(String)
@@ -52,9 +53,15 @@ impl HueError {
     }
 }
 
+impl error::FromError<json::DecoderError> for HueError {
+    fn from_error(err: json::DecoderError) -> HueError {
+        HueError::JsonDecoderError(err)
+    }
+}
+
 impl error::FromError<json::ParserError> for HueError {
     fn from_error(err: json::ParserError) -> HueError {
-        HueError::JsonError(err)
+        HueError::JsonParserError(err)
     }
 }
 

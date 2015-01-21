@@ -2,19 +2,81 @@ use hyper::Client;
 use hyper::client::Body;
 use hyper::method::Method;
 use hyper::client::response::Response;
-use hyper::method::Method::{Post, Get, Put};
 use disco;
+use rustc_serialize::Decodable;
 use rustc_serialize::json;
 use rustc_serialize::json::Json;
 use errors::HueError;
 use errors::AppError;
 use std::collections::BTreeMap;
 
+#[derive(Show,Clone)]
+pub struct Light {
+    name: String,
+    modelid: String,
+    swversion: String,
+    uniqueid: String,
+}
+
 #[derive(Show)]
 pub struct Bridge {
     ip: String,
     username: Option<String>,
 }
+
+impl /*::rustc_serialize::Decodable for*/ Light {
+    fn decode<__D: ::rustc_serialize::Decoder>(__arg_0: &mut __D) -> ::std::result::Result<Light, __D::Error> {
+        __arg_0.read_struct("Light", 4us, |_d|
+            ::std::result::Result::Ok(Light{name:
+                              match _d.read_struct_field("name",
+                                                         0us,
+                                                         ::rustc_serialize::Decodable::decode)
+                                  {
+                                  Ok(__try_var)
+                                  =>
+                                  __try_var,
+                                  Err(__try_var)
+                                  =>
+                                  return Err(__try_var),
+                              },
+                          modelid:
+                              match _d.read_struct_field("modelid",
+                                                         1us,
+                                                         ::rustc_serialize::Decodable::decode)
+                                  {
+                                  Ok(__try_var)
+                                  =>
+                                  __try_var,
+                                  Err(__try_var)
+                                  =>
+                                  return Err(__try_var),
+                              },
+                          swversion:
+                              match _d.read_struct_field("swversion",
+                                                         2us,
+                                                         ::rustc_serialize::Decodable::decode)
+                                  {
+                                  Ok(__try_var)
+                                  =>
+                                  __try_var,
+                                  Err(__try_var)
+                                  =>
+                                  return Err(__try_var),
+                              },
+                          uniqueid:
+                              match _d.read_struct_field("uniqueid",
+                                                         3us,
+                                                         ::rustc_serialize::Decodable::decode)
+                                  {
+                                  Ok(__try_var)
+                                  =>
+                                  __try_var,
+                                  Err(__try_var)
+                                  =>
+                                  return Err(__try_var),
+                              },}))
+        }
+    }
 
 impl Bridge {
     #[allow(dead_code)]
@@ -51,13 +113,22 @@ impl Bridge {
         self.parse_write_resp(&mut resp)
     }
 
-    pub fn get_all_lights(&self) -> Result<BTreeMap<String,Json>,HueError> {
+    pub fn get_all_lights(&self) -> Result<Vec<Light>,HueError> {
+        use rustc_serialize::Decodable;
         let url = format!("http://{}/api/{}/lights",
             self.ip, self.username.clone().unwrap());
         let mut client = Client::new();
         let mut resp = try!(client.get(url.as_slice()).send());
         let json = try!(::tools::from_reader(&mut resp));
-        Ok(json.as_object().unwrap().clone())
+        let lights:Vec<Result<Light,json::DecoderError>> = json.as_object().unwrap().iter().map( |(k,v)| {
+            let mut decoder = json::Decoder::new(v.clone());
+            Light::decode(&mut decoder)
+        }).collect();
+        let error = lights.iter().find( |r| r.is_err() );
+        match error {
+            Some(e) => Err(HueError::JsonDecoderError(e.clone().unwrap_err())),
+            None => Ok(lights.iter().cloned().map( |l| l.unwrap() ).collect())
+        }
     }
 
     fn parse_write_resp(&self, resp:&mut Response) -> Result<Json,HueError> {
