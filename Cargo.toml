@@ -1,6 +1,6 @@
 [package]
 
-name = "hue"
+name = "hue.rs"
 version = "0.1.0"
 authors = ["Mathieu Poumeyrol <kali@zoy.org>"]
 description = "Rust library for Philips Hue lights"
