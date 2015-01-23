@@ -1,5 +1,5 @@
 #![allow(unstable)]
-extern crate hue;
+extern crate hueclient;
 use std::os;
 
 #[allow(dead_code)]
@@ -9,7 +9,7 @@ fn main() {
         println!("usage : {} <username>", args[0]);
         return
     }
-    let bridge = ::hue::bridge::Bridge::discover_required().with_user(args[1].clone());
+    let bridge = ::hueclient::bridge::Bridge::discover_required().with_user(args[1].clone());
     match bridge.get_all_lights() {
         Ok(lights) => {
             for ref l in lights.iter() {

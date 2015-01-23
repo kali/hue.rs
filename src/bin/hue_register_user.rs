@@ -1,7 +1,7 @@
 #![allow(unstable)]
-extern crate hue;
+extern crate hueclient;
 use std::os;
-use hue::errors::HueError;
+use hueclient::errors::HueError;
 
 #[allow(while_true)]
 #[allow(dead_code)]
@@ -10,7 +10,7 @@ fn main() {
     if args.len() != 3 {
         println!("usage : {} <devicetype> <username>", args[0]);
     } else {
-        let bridge = ::hue::bridge::Bridge::discover_required();
+        let bridge = ::hueclient::bridge::Bridge::discover_required();
         println!("posting user {:?}/{:?} in {:?}", args[1], args[2], bridge);
         while true {
             let r = bridge.register_user(args[1].as_slice(), args[2].as_slice());
