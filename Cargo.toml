@@ -1,8 +1,14 @@
 [package]
 
 name = "hue"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Mathieu Poumeyrol <kali@zoy.org>"]
+description = "Rust library for Philips Hue lights"
+homepage = "http://github.com/kali/hue.rs"
+repository = "http://github.com/kali/hue.rs"
+readme = "README.md"
+license = "WTFPL"
+keywords = [ "Philips", "hue", "light", "bulb" ]
 
 [dependencies]
 hyper = "0.1.4"
