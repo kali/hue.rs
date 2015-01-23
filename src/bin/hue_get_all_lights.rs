@@ -2,6 +2,7 @@
 extern crate hue;
 use std::os;
 
+#[allow(dead_code)]
 fn main() {
     let args = os::args();
     if args.len() < 2 {

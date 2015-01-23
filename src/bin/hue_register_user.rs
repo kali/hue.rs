@@ -4,6 +4,7 @@ use std::os;
 use hue::errors::HueError;
 
 #[allow(while_true)]
+#[allow(dead_code)]
 fn main() {
     let args = os::args();
     if args.len() != 3 {

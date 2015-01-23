@@ -4,6 +4,7 @@ extern crate regex;
 use std::os;
 use regex::Regex;
 
+#[allow(dead_code)]
 fn main() {
     let args = os::args();
     if args.len() < 4 {
@@ -32,7 +33,6 @@ fn main() {
         parsed.transitiontime = args[4].parse::<u16>();
     }
     for l in lights.iter() {
-        bridge.set_light_state(*l, parsed);
+        println!("{:?}", bridge.set_light_state(*l, parsed));
     }
-    //println!("{:?}", parsed)
 }
