@@ -86,7 +86,7 @@ impl Bridge {
             devicetype:devicetype.to_string(),
             username:username.to_string()
         };
-        let body = json::encode(&obtain);
+        let body = try!(json::encode(&obtain));
         let mut client = Client::new();
         let url = format!("http://{}/api", self.ip);
         let mut resp = try!(client.post(url.as_slice())
@@ -100,27 +100,29 @@ impl Bridge {
         let mut client = Client::new();
         let mut resp = try!(client.get(url.as_slice()).send());
         let json = try!(::tools::from_reader(&mut resp));
-        let lights:Vec<Result<IdentifiedLight,_>> = json.as_object().unwrap().iter().map( |(k,v)| {
+        let lights:Vec<Result<IdentifiedLight,json::DecoderError>> = json.as_object().unwrap().iter().map( |(k,v)| {
             let mut decoder = json::Decoder::new(v.clone());
             <Light as Decodable>::decode(&mut decoder).map( |l|
                 IdentifiedLight{ id: k.parse().unwrap(), light: l }
             )
         }).collect();
-        let error = lights.iter().find( |r| r.is_err() );
-        match error {
-            Some(e) => Err(HueError::JsonDecoderError(e.clone().unwrap_err())),
-            None => {
-                let mut v:Vec<IdentifiedLight> = lights.iter().cloned().map( |l| l.unwrap() ).collect();
-                v.sort_by( |a,b| a.id.cmp(&b.id) );
-                Ok(v)
+        for ref l in lights.iter().cloned() {
+            match l {
+                &Err(ref e) => {
+                    return Err(HueError::JsonDecoderError(e.clone()));
+                }
+                &Ok(ref _l) => ()
             }
         }
+        let mut v:Vec<IdentifiedLight> = lights.iter().cloned().map( |l| l.unwrap() ).collect();
+        v.sort_by( |a,b| a.id.cmp(&b.id) );
+        Ok(v)
     }
 
     pub fn set_light_state(&self, light:usize, command:CommandLight) -> Result<Json, HueError> {
         let url = format!("http://{}/api/{}/lights/{}/state",
             self.ip, self.username.clone().unwrap(), light);
-        let body = json::encode(&command);
+        let body = try!(json::encode(&command));
         let re1 = Regex::new("\"[a-z]*\":null").unwrap();
         let cleaned1 = re1.replace_all(body.as_slice(),"");
         let re2 = Regex::new(",+").unwrap();

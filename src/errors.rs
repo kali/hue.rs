@@ -42,6 +42,7 @@ impl AppError {
 pub enum HueError {
     JsonParserError(json::ParserError),
     JsonDecoderError(json::DecoderError),
+    JsonEncoderError(json::EncoderError),
     HttpError(hyper::HttpError),
     BridgeError(AppError),
     Error(String)
@@ -50,6 +51,12 @@ pub enum HueError {
 impl HueError {
     pub fn wrap<O> (a:&str) -> ::std::result::Result<O, HueError> {
         Err(HueError::Error(a.to_string()))
+    }
+}
+
+impl error::FromError<json::EncoderError> for HueError {
+    fn from_error(err: json::EncoderError) -> HueError {
+        HueError::JsonEncoderError(err)
     }
 }
 
