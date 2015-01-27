@@ -9,6 +9,8 @@ use errors::HueError;
 use errors::AppError;
 use regex::Regex;
 
+just breaking something
+
 #[derive(Show,Copy,Clone,RustcDecodable)]
 pub struct LightState {
     pub on: bool,
