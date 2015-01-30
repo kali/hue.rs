@@ -1,4 +1,4 @@
-#![allow(unstable)]
+#![feature(collections,os,core)]
 extern crate hueclient;
 extern crate regex;
 use std::os;

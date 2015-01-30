@@ -11,6 +11,6 @@ license = "WTFPL"
 keywords = [ "Philips", "hue", "light", "bulb" ]
 
 [dependencies]
-regex = "0.1.8"
-hyper = "0.1"
-rustc-serialize = "0.2"
+regex = "0.1.11"
+hyper = "0.1.9"
+rustc-serialize = "0.2.10"

@@ -1,7 +1,7 @@
 /// Decodes a json value from an `&mut io::Reader`
 // borrowed from rustc json lib
 use rustc_serialize::json;
-use std::io;
+use std::old_io as io;
 
 fn io_error_to_error(io: io::IoError) -> json::ParserError {
     json::ParserError::IoError(io.kind, io.desc)

@@ -1,4 +1,4 @@
-#![allow(unstable)]
+#![feature(os,core,std_misc,io)]
 extern crate hueclient;
 use std::os;
 use hueclient::errors::HueError;
@@ -21,7 +21,7 @@ fn main() {
                 },
                 Err(HueError::BridgeError(ref error)) if error.code == 101 => {
                     println!("Push the bridge button");
-                    std::io::timer::sleep(std::time::duration::Duration::seconds(5))
+                    std::old_io::timer::sleep(std::time::duration::Duration::seconds(5))
                 },
                 Err(e) => panic!(e)
             }

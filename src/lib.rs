@@ -1,7 +1,6 @@
-#![allow(unstable)]
+#![feature(core,collections,io)]
 
 extern crate "rustc-serialize" as rustc_serialize;
-extern crate serialize;
 extern crate hyper;
 extern crate core;
 extern crate regex;
