@@ -9,7 +9,7 @@ use errors::HueError;
 use errors::AppError;
 use regex::Regex;
 
-#[derive(Show,Copy,Clone,RustcDecodable)]
+#[derive(Debug,Copy,Clone,RustcDecodable)]
 pub struct LightState {
     pub on: bool,
     pub bri: u8,
@@ -17,7 +17,7 @@ pub struct LightState {
     pub sat: u8
 }
 
-#[derive(Show,Clone,RustcDecodable)]
+#[derive(Debug,Clone,RustcDecodable)]
 pub struct Light {
     pub name: String,
     pub modelid: String,
@@ -26,13 +26,13 @@ pub struct Light {
     pub state: LightState,
 }
 
-#[derive(Show,Clone)]
+#[derive(Debug,Clone)]
 pub struct IdentifiedLight {
     pub id: usize,
     pub light: Light,
 }
 
-#[derive(Show,Clone,Copy,RustcEncodable,RustcDecodable)]
+#[derive(Debug,Clone,Copy,RustcEncodable,RustcDecodable)]
 pub struct CommandLight {
     pub on:Option<bool>,
     pub bri:Option<u8>,
@@ -53,7 +53,7 @@ impl CommandLight {
     }
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub struct Bridge {
     ip: String,
     username: Option<String>,

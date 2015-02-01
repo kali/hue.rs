@@ -3,7 +3,7 @@ use std::error;
 use rustc_serialize::json;
 use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
 
-#[derive(Show)]
+#[derive(Debug)]
 pub struct AppError {
     pub address:String,
     pub description:String,
@@ -38,7 +38,7 @@ impl AppError {
   }
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub enum HueError {
     JsonParserError(json::ParserError),
     JsonDecoderError(json::DecoderError),
