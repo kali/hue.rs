@@ -22,15 +22,15 @@ fn main() {
         _ if re.is_match(command.as_slice()) => {
             let caps = re.captures(command.as_slice()).unwrap();
             let mut command = hueclient::bridge::CommandLight::on();
-            command.bri = caps.at(1).and_then( |s| s.parse::<u8>() );
-            command.hue = caps.at(2).and_then( |s| s.parse::<u16>() );
-            command.sat = caps.at(3).and_then( |s| s.parse::<u8>() );
+            command.bri = caps.at(1).and_then( |s| s.parse::<u8>().ok() );
+            command.hue = caps.at(2).and_then( |s| s.parse::<u16>().ok() );
+            command.sat = caps.at(3).and_then( |s| s.parse::<u8>().ok() );
             command
         }
         _ => panic!("can not understand command {:?}", command)
     };
     if args.len() == 5 {
-        parsed.transitiontime = args[4].parse::<u16>();
+        parsed.transitiontime = args[4].parse::<u16>().ok();
     }
     for l in lights.iter() {
         println!("{:?}", bridge.set_light_state(*l, parsed));

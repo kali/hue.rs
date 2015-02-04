@@ -1,4 +1,4 @@
-#![feature(core,collections,io)]
+#![feature(core,io)]
 
 extern crate "rustc-serialize" as rustc_serialize;
 extern crate hyper;

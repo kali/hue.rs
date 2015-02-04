@@ -1,4 +1,4 @@
-#![feature(os)]
+#![feature(os,core)]
 extern crate hueclient;
 use std::os;
 
