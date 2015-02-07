@@ -1,17 +1,17 @@
-#![feature(collections,os,core)]
+#![feature(collections,os,core,env)]
 extern crate hueclient;
 extern crate regex;
-use std::os;
+use std::env;
 use regex::Regex;
 
 #[allow(dead_code)]
 fn main() {
-    let args = os::args();
+    let args:Vec<String> = env::args().map( |s| s.into_string().unwrap() ).collect();
     if args.len() < 4 {
-        println!("usage : {} <username> <light_id>,<light_id>,... on|off|bri:hue:sat [transition_time]", args[0]);
+        println!("usage : {:?} <username> <light_id>,<light_id>,... on|off|bri:hue:sat [transition_time]", args[0]);
         return
     }
-    let bridge = ::hueclient::bridge::Bridge::discover_required().with_user(args[1].clone());
+    let bridge = ::hueclient::bridge::Bridge::discover_required().with_user(args[1].to_string());
     let ref lights:Vec<usize> = args[2].split_str(",").map(|s| s.parse::<usize>().unwrap() ).collect();
     println!("lights: {:?}", lights);
     let ref command = args[3];

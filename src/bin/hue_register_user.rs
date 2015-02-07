@@ -1,14 +1,14 @@
-#![feature(os,core,std_misc,io)]
+#![feature(core,os,std_misc,io,env)]
 extern crate hueclient;
-use std::os;
+use std::env;
 use hueclient::errors::HueError;
 
 #[allow(while_true)]
 #[allow(dead_code)]
 fn main() {
-    let args = os::args();
+    let args:Vec<String> = env::args().map( |s| s.into_string().unwrap() ).collect();
     if args.len() != 3 {
-        println!("usage : {} <devicetype> <username>", args[0]);
+        println!("usage : {:?} <devicetype> <username>", args[0]);
     } else {
         let bridge = ::hueclient::bridge::Bridge::discover_required();
         println!("posting user {:?}/{:?} in {:?}", args[1], args[2], bridge);

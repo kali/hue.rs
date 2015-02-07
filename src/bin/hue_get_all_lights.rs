@@ -1,15 +1,15 @@
-#![feature(os,core)]
+#![feature(os,core,env)]
 extern crate hueclient;
-use std::os;
+use std::env;
 
 #[allow(dead_code)]
 fn main() {
-    let args = os::args();
+    let args:Vec<String> = env::args().map( |s| s.into_string().unwrap() ).collect();
     if args.len() < 2 {
-        println!("usage : {} <username>", args[0]);
+        println!("usage : {:?} <username>", args[0]);
         return
     }
-    let bridge = ::hueclient::bridge::Bridge::discover_required().with_user(args[1].clone());
+    let bridge = ::hueclient::bridge::Bridge::discover_required().with_user(args[1].to_string());
     match bridge.get_all_lights() {
         Ok(lights) => {
             for ref l in lights.iter() {
