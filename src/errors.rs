@@ -2,6 +2,7 @@ use hyper;
 use std::error;
 use rustc_serialize::json;
 use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
+use core::error::Error;
 
 #[derive(Debug)]
 pub struct AppError {
@@ -40,47 +41,48 @@ impl AppError {
 
 #[derive(Debug)]
 pub enum HueError {
-    JsonParserError(json::ParserError),
-    JsonDecoderError(json::DecoderError),
-    JsonEncoderError(json::EncoderError),
-    HttpError(hyper::HttpError),
+    ProtocolError(String),
     BridgeError(AppError),
-    Error(String)
 }
 
 impl HueError {
     pub fn wrap<O> (a:&str) -> ::std::result::Result<O, HueError> {
-        Err(HueError::Error(a.to_string()))
+        Err(HueError::ProtocolError(a.to_string()))
     }
 }
 
 impl error::FromError<json::EncoderError> for HueError {
     fn from_error(err: json::EncoderError) -> HueError {
-        HueError::JsonEncoderError(err)
+        HueError::ProtocolError(err.description().to_string())
     }
 }
 
 impl error::FromError<json::DecoderError> for HueError {
     fn from_error(err: json::DecoderError) -> HueError {
-        HueError::JsonDecoderError(err)
+        HueError::ProtocolError(err.description().to_string())
     }
 }
 
 impl error::FromError<json::ParserError> for HueError {
     fn from_error(err: json::ParserError) -> HueError {
-        HueError::JsonParserError(err)
+        HueError::ProtocolError(err.description().to_string())
     }
 }
 
 impl error::FromError<hyper::HttpError> for HueError {
     fn from_error(err: hyper::HttpError) -> HueError {
-        HueError::HttpError(err)
+        HueError::ProtocolError(err.description().to_string())
     }
 }
 
 impl error::FromError<::core::fmt::Error> for HueError {
     fn from_error(_err: ::core::fmt::Error) -> HueError {
-        HueError::Error("core format error".to_string())
+        HueError::ProtocolError("core format error".to_string())
     }
 }
 
+impl error::FromError<::core::num::ParseIntError> for HueError {
+    fn from_error(err: ::core::num::ParseIntError) -> HueError {
+        HueError::ProtocolError(err.description().to_string())
+    }
+}

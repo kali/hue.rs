@@ -100,12 +100,14 @@ impl Bridge {
         let mut client = Client::new();
         let mut resp = try!(client.get(url.as_slice()).send());
         let json = try!(::tools::from_reader(&mut resp));
+        let json_object = try!(json.as_object().
+            ok_or(HueError::ProtocolError("malformed bridge response".to_string())));
         let mut lights:Vec<IdentifiedLight> = try!(
-            json.as_object().unwrap().iter().map( |(k,v)| {
-            let mut decoder = json::Decoder::new(v.clone());
-            <Light as Decodable>::decode(&mut decoder).map( |l|
-                IdentifiedLight{ id: k.parse().unwrap(), light: l }
-            )
+            json_object.iter().map( |(k,v)| -> Result<IdentifiedLight,HueError> {
+                let id:usize = try!(k.parse());
+                let mut decoder = json::Decoder::new(v.clone());
+                let light = try!(<Light as Decodable>::decode(&mut decoder));
+                Ok(IdentifiedLight{ id: id, light: light })
         }).collect());
         lights.sort_by( |a,b| a.id.cmp(&b.id) );
         Ok(lights)
@@ -132,12 +134,12 @@ impl Bridge {
     fn parse_write_resp(&self, resp:&mut Response) -> Result<Json,HueError> {
         let json = try!(::tools::from_reader(resp));
         let objects = try!(json.as_array()
-            .ok_or(HueError::Error("expected array".to_string())));
+            .ok_or(HueError::ProtocolError("expected array".to_string())));
         if objects.len() == 0 {
-            return HueError::wrap("expected non-empty array");
+            return Err(HueError::ProtocolError("expected non-empty array".to_string()));
         }
         let object = try!(objects[0].as_object()
-            .ok_or(HueError::Error("expected first item to be an object".to_string())));
+            .ok_or(HueError::ProtocolError("expected first item to be an object".to_string())));
         let obj = object.get(&"error".to_string()).and_then( |o| o.as_object() );
         match obj {
             Some(e) => {

@@ -10,13 +10,13 @@ pub fn discover_hue_bridge() -> Result<String, HueError> {
     let j = try!(::tools::from_reader(&mut res));
 
     let objects:&json::Array =
-        try!(j.as_array().ok_or(HueError::Error("Expected an array".to_string())));
+        try!(j.as_array().ok_or(HueError::ProtocolError("Expected an array".to_string())));
     if objects.len() == 0 {
         return HueError::wrap("expected non-empty array");
     }
     let ref object = objects[0];
 
     let ip = try!(object.find("internalipaddress")
-        .ok_or(HueError::Error("Expected internalipaddress".to_string())));
+        .ok_or(HueError::ProtocolError("Expected internalipaddress".to_string())));
     Ok(ip.as_string().unwrap().to_string())
 }
