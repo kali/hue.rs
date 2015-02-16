@@ -1,10 +1,10 @@
-#![feature(os,core,env)]
+#![feature(core,env)]
 extern crate hueclient;
 use std::env;
 
 #[allow(dead_code)]
 fn main() {
-    let args:Vec<String> = env::args().map( |s| s.into_string().unwrap() ).collect();
+    let args:Vec<String> = env::args().collect();
     if args.len() < 2 {
         println!("usage : {:?} <username>", args[0]);
         return

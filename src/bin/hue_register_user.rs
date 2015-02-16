@@ -1,4 +1,4 @@
-#![feature(core,os,std_misc,io,env)]
+#![feature(core,std_misc,io,env)]
 extern crate hueclient;
 use std::env;
 use hueclient::errors::HueError;
@@ -6,7 +6,7 @@ use hueclient::errors::HueError;
 #[allow(while_true)]
 #[allow(dead_code)]
 fn main() {
-    let args:Vec<String> = env::args().map( |s| s.into_string().unwrap() ).collect();
+    let args:Vec<String> = env::args().collect();
     if args.len() != 3 {
         println!("usage : {:?} <devicetype> <username>", args[0]);
     } else {

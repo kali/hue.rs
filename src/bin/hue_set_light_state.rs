@@ -1,4 +1,4 @@
-#![feature(collections,os,core,env)]
+#![feature(collections,core,env)]
 extern crate hueclient;
 extern crate regex;
 use std::env;
@@ -6,7 +6,7 @@ use regex::Regex;
 
 #[allow(dead_code)]
 fn main() {
-    let args:Vec<String> = env::args().map( |s| s.into_string().unwrap() ).collect();
+    let args:Vec<String> = env::args().collect();
     if args.len() < 4 {
         println!("usage : {:?} <username> <light_id>,<light_id>,... on|off|bri:hue:sat [transition_time]", args[0]);
         return
