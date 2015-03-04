@@ -1,4 +1,4 @@
-#![feature(core,std_misc,env,old_io)]
+#![feature(core,std_misc,old_io)]
 extern crate hueclient;
 use std::env;
 use hueclient::errors::HueError;

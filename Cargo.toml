@@ -1,7 +1,7 @@
 [package]
 
 name = "hueclient"
-version = "0.1.8"
+version = "0.2.0"
 authors = ["Mathieu Poumeyrol <kali@zoy.org>"]
 description = "Rust library for Philips Hue lights"
 homepage = "http://github.com/kali/hue.rs"
@@ -11,6 +11,6 @@ license = "WTFPL"
 keywords = [ "Philips", "hue", "light", "bulb" ]
 
 [dependencies]
-regex = "0.1.15"
-hyper = "0.2.0"
-rustc-serialize = "0.2.15"
+regex = "0.1.17"
+hyper = "0.3.0"
+rustc-serialize = "0.3.0"

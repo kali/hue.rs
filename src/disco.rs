@@ -7,7 +7,7 @@ pub fn discover_hue_bridge() -> Result<String, HueError> {
 
     let mut res = try!(client.get("https://www.meethue.com/api/nupnp").send());
 
-    let j = try!(::tools::from_reader(&mut res));
+    let j = try!(json::Json::from_reader(&mut res));
 
     let objects:&json::Array =
         try!(j.as_array().ok_or(HueError::ProtocolError("Expected an array".to_string())));

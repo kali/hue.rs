@@ -1,4 +1,3 @@
-#![feature(env)]
 extern crate hueclient;
 use std::env;
 

@@ -99,7 +99,7 @@ impl Bridge {
             self.ip, self.username.clone().unwrap());
         let mut client = Client::new();
         let mut resp = try!(client.get(url.as_slice()).send());
-        let json = try!(::tools::from_reader(&mut resp));
+        let json = try!(json::Json::from_reader(&mut resp));
         let json_object = try!(json.as_object().
             ok_or(HueError::ProtocolError("malformed bridge response".to_string())));
         let mut lights:Vec<IdentifiedLight> = try!(
@@ -132,7 +132,7 @@ impl Bridge {
     }
 
     fn parse_write_resp(&self, resp:&mut Response) -> Result<Json,HueError> {
-        let json = try!(::tools::from_reader(resp));
+        let json = try!(json::Json::from_reader(resp));
         let objects = try!(json.as_array()
             .ok_or(HueError::ProtocolError("expected array".to_string())));
         if objects.len() == 0 {

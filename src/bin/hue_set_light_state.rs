@@ -1,4 +1,4 @@
-#![feature(collections,core,env)]
+#![feature(core)]
 extern crate hueclient;
 extern crate regex;
 use std::env;
@@ -12,7 +12,7 @@ fn main() {
         return
     }
     let bridge = ::hueclient::bridge::Bridge::discover_required().with_user(args[1].to_string());
-    let ref lights:Vec<usize> = args[2].split_str(",").map(|s| s.parse::<usize>().unwrap() ).collect();
+    let ref lights:Vec<usize> = args[2].split(",").map(|s| s.parse::<usize>().unwrap() ).collect();
     println!("lights: {:?}", lights);
     let ref command = args[3];
     let re = Regex::new("([0-9]{0,3}):([0-9]{0,5}):([0-9]{0,3})").unwrap();
