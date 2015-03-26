@@ -89,7 +89,7 @@ impl Bridge {
         let body = try!(json::encode(&obtain));
         let mut client = Client::new();
         let url = format!("http://{}/api", self.ip);
-        let mut resp = try!(client.post(url.as_slice())
+        let mut resp = try!(client.post(&url[..])
             .body(Body::BufBody(body.as_bytes(), body.as_bytes().len())).send());
         self.parse_write_resp(&mut resp)
     }
@@ -98,7 +98,7 @@ impl Bridge {
         let url = format!("http://{}/api/{}/lights",
             self.ip, self.username.clone().unwrap());
         let mut client = Client::new();
-        let mut resp = try!(client.get(url.as_slice()).send());
+        let mut resp = try!(client.get(&url[..]).send());
         let json = try!(json::Json::from_reader(&mut resp));
         let json_object = try!(json.as_object().
             ok_or(HueError::ProtocolError("malformed bridge response".to_string())));
@@ -118,15 +118,15 @@ impl Bridge {
             self.ip, self.username.clone().unwrap(), light);
         let body = try!(json::encode(&command));
         let re1 = Regex::new("\"[a-z]*\":null").unwrap();
-        let cleaned1 = re1.replace_all(body.as_slice(),"");
+        let cleaned1 = re1.replace_all(&body,"");
         let re2 = Regex::new(",+").unwrap();
-        let cleaned2 = re2.replace_all(cleaned1.as_slice(),",");
+        let cleaned2 = re2.replace_all(&cleaned1,",");
         let re3 = Regex::new(",\\}").unwrap();
-        let cleaned3 = re3.replace_all(cleaned2.as_slice(),"}");
+        let cleaned3 = re3.replace_all(&cleaned2,"}");
         let re3 = Regex::new("\\{,").unwrap();
-        let cleaned4 = re3.replace_all(cleaned3.as_slice(),"{");
+        let cleaned4 = re3.replace_all(&cleaned3,"{");
         let mut client = Client::new();
-        let mut resp = try!(client.put(url.as_slice())
+        let mut resp = try!(client.put(&url[..])
             .body(Body::BufBody(cleaned4.as_bytes(), cleaned4.as_bytes().len())).send());
         self.parse_write_resp(&mut resp)
     }

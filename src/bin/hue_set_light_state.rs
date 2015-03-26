@@ -1,4 +1,3 @@
-#![feature(core)]
 extern crate hueclient;
 extern crate regex;
 use std::env;
@@ -16,11 +15,11 @@ fn main() {
     println!("lights: {:?}", lights);
     let ref command = args[3];
     let re = Regex::new("([0-9]{0,3}):([0-9]{0,5}):([0-9]{0,3})").unwrap();
-    let mut parsed = match command.as_slice() {
+    let mut parsed = match &command[..] {
         "on" => hueclient::bridge::CommandLight::on(),
         "off" => hueclient::bridge::CommandLight::off(),
-        _ if re.is_match(command.as_slice()) => {
-            let caps = re.captures(command.as_slice()).unwrap();
+        _ if re.is_match(&command) => {
+            let caps = re.captures(&command).unwrap();
             let mut command = hueclient::bridge::CommandLight::on();
             command.bri = caps.at(1).and_then( |s| s.parse::<u8>().ok() );
             command.hue = caps.at(2).and_then( |s| s.parse::<u16>().ok() );

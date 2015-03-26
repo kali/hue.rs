@@ -1,4 +1,4 @@
-#![feature(core,std_misc,old_io)]
+#![feature(std_misc,thread_sleep)]
 extern crate hueclient;
 use std::env;
 use hueclient::errors::HueError;
@@ -13,7 +13,7 @@ fn main() {
         let bridge = ::hueclient::bridge::Bridge::discover_required();
         println!("posting user {:?}/{:?} in {:?}", args[1], args[2], bridge);
         while true {
-            let r = bridge.register_user(args[1].as_slice(), args[2].as_slice());
+            let r = bridge.register_user(&args[1], &args[2]);
             match r {
                 Ok(r) => {
                     println!("done: {:?}", r);
@@ -21,7 +21,7 @@ fn main() {
                 },
                 Err(HueError::BridgeError(ref error)) if error.code == 101 => {
                     println!("Push the bridge button");
-                    std::old_io::timer::sleep(std::time::duration::Duration::seconds(5))
+                    std::thread::sleep(std::time::duration::Duration::seconds(5))
                 },
                 Err(e) => panic!(e)
             }
