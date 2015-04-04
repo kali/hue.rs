@@ -8,6 +8,7 @@ use rustc_serialize::{ Decodable, Encodable };
 use errors::HueError;
 use errors::AppError;
 use regex::Regex;
+use std::str::FromStr;
 
 #[derive(Debug,Copy,Clone,RustcDecodable)]
 pub struct LightState {
@@ -104,7 +105,7 @@ impl Bridge {
             ok_or(HueError::ProtocolError("malformed bridge response".to_string())));
         let mut lights:Vec<IdentifiedLight> = try!(
             json_object.iter().map( |(k,v)| -> Result<IdentifiedLight,HueError> {
-                let id:usize = try!(k.parse());
+                let id:usize = try!(usize::from_str(k));
                 let mut decoder = json::Decoder::new(v.clone());
                 let light = try!(<Light as Decodable>::decode(&mut decoder));
                 Ok(IdentifiedLight{ id: id, light: light })

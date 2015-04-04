@@ -1,8 +1,9 @@
 use hyper;
-use std::error;
+use std::convert::From;
+use std::error::Error;
 use rustc_serialize::json;
 use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
-use core::error::Error;
+use std::num::ParseIntError;
 
 #[derive(Debug)]
 pub struct AppError {
@@ -51,38 +52,32 @@ impl HueError {
     }
 }
 
-impl error::FromError<json::EncoderError> for HueError {
-    fn from_error(err: json::EncoderError) -> HueError {
+impl From<json::EncoderError> for HueError {
+    fn from(err: json::EncoderError) -> HueError {
         HueError::ProtocolError(err.description().to_string())
     }
 }
 
-impl error::FromError<json::DecoderError> for HueError {
-    fn from_error(err: json::DecoderError) -> HueError {
+impl From<json::DecoderError> for HueError {
+    fn from(err: json::DecoderError) -> HueError {
         HueError::ProtocolError(err.description().to_string())
     }
 }
 
-impl error::FromError<json::ParserError> for HueError {
-    fn from_error(err: json::ParserError) -> HueError {
+impl From<json::ParserError> for HueError {
+    fn from(err: json::ParserError) -> HueError {
         HueError::ProtocolError(err.description().to_string())
     }
 }
 
-impl error::FromError<hyper::HttpError> for HueError {
-    fn from_error(err: hyper::HttpError) -> HueError {
+impl From<hyper::HttpError> for HueError {
+    fn from(err: hyper::HttpError) -> HueError {
         HueError::ProtocolError(err.description().to_string())
     }
 }
 
-impl error::FromError<::core::fmt::Error> for HueError {
-    fn from_error(_err: ::core::fmt::Error) -> HueError {
-        HueError::ProtocolError("core format error".to_string())
-    }
-}
-
-impl error::FromError<::core::num::ParseIntError> for HueError {
-    fn from_error(err: ::core::num::ParseIntError) -> HueError {
-        HueError::ProtocolError(err.description().to_string())
+impl From<ParseIntError> for HueError {
+    fn from(err: ParseIntError) -> HueError {
+        HueError::ProtocolError(Error::description(&err).to_string())
     }
 }
