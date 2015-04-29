@@ -33,5 +33,6 @@ fn main() {
     }
     for l in lights.iter() {
         println!("{:?}", bridge.set_light_state(*l, parsed));
+        std::thread::sleep_ms(50)
     }
 }

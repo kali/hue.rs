@@ -52,6 +52,15 @@ impl CommandLight {
     pub fn off() -> CommandLight {
         CommandLight { on:Some(false), ..CommandLight::empty() }
     }
+    pub fn with_bri(&self, b:u8) -> CommandLight {
+        CommandLight { bri:Some(b), ..*self }
+    }
+    pub fn with_hue(&self, h:u16) -> CommandLight {
+        CommandLight { hue:Some(h), ..*self }
+    }
+    pub fn with_sat(&self, s:u8) -> CommandLight {
+        CommandLight { sat:Some(s), ..*self }
+    }
 }
 
 #[derive(Debug)]
@@ -146,7 +155,7 @@ impl Bridge {
             Some(e) => {
                 let error = e.clone();
                 let mut decoder = json::Decoder::new(json::Json::Object(error));
-                let actual_error = AppError::dec(&mut decoder).ok().unwrap();
+                let actual_error = try!(AppError::dec(&mut decoder));
                 //println!("actual: {:?}",actual_error);
                 Err(HueError::BridgeError(actual_error))
             },
