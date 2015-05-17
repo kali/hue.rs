@@ -1,22 +1,26 @@
 use hyper;
-use rustc_serialize::json;
+use serde::json::{ self, Value };
 use errors::HueError;
+
+use std::io::Read;
 
 pub fn discover_hue_bridge() -> Result<String, HueError> {
     let mut client = hyper::Client::new();
 
     let mut res = try!(client.get("https://www.meethue.com/api/nupnp").send());
+    let mut body = String::new();
+    try!(res.read_to_string(&mut body));
 
-    let j = try!(json::Json::from_reader(&mut res));
+    let j:Value = try!(json::from_str(&*body));
 
-    let objects:&json::Array =
-        try!(j.as_array().ok_or(HueError::ProtocolError("Expected an array".to_string())));
+    let objects:&Vec<Value> =
+        try!(j.as_array().ok_or(HueError::StdError("Expected an array".to_string())));
     if objects.len() == 0 {
-        return HueError::wrap("expected non-empty array");
+        return Err(HueError::StdError("expected non-empty array".to_string()));
     }
     let ref object = objects[0];
 
     let ip = try!(object.find("internalipaddress")
-        .ok_or(HueError::ProtocolError("Expected internalipaddress".to_string())));
+        .ok_or(HueError::StdError("Expected internalipaddress".to_string())));
     Ok(ip.as_string().unwrap().to_string())
 }

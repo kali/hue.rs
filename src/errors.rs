@@ -1,9 +1,10 @@
 use hyper;
 use std::convert::From;
 use std::error::Error;
-use rustc_serialize::json;
-use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
+use serde::json;
+use serde::{Serialize, Deserialize, Deserializer};
 use std::num::ParseIntError;
+use std::fmt::{ Formatter, Display };
 
 #[derive(Debug)]
 pub struct AppError {
@@ -12,72 +13,55 @@ pub struct AppError {
     pub code:u8
 }
 
-impl Encodable for AppError {
-  fn encode<S:Encoder>(&self, encoder: &mut S) -> Result<(), S::Error> {
-    match *self {
-      AppError{  address: ref p_address, description: ref p_description,
-                    code:p_code} => {
-        encoder.emit_struct("AppError", 0, |encoder| {
-          try!(encoder.emit_struct_field( "address", 0, |encoder| p_address.encode(encoder)));
-          try!(encoder.emit_struct_field( "description", 1, |encoder| p_description.encode(encoder)));
-          try!(encoder.emit_struct_field( "type", 2, |encoder| p_code.encode(encoder)));
-          Ok(())
-        })
-      }
-    }
-  }
-}
-
-impl AppError {
-  pub fn dec<S:Decoder>(decoder: &mut S) -> Result<AppError, S::Error> {
-    decoder.read_struct("root", 0, |decoder| {
-        Ok(AppError{
-            address: try!(decoder.read_struct_field("address", 0, |decoder| Decodable::decode(decoder))),
-            description: try!(decoder.read_struct_field("description", 1, |decoder| Decodable::decode(decoder))),
-            code: try!(decoder.read_struct_field("type", 2, |decoder| Decodable::decode(decoder)))
-        })
-    })
-  }
-}
-
 #[derive(Debug)]
 pub enum HueError {
-    ProtocolError(String),
+    StdError(String),
     BridgeError(AppError),
+    JsonError(::serde::json::error::Error),
 }
 
-impl HueError {
-    pub fn wrap<O> (a:&str) -> ::std::result::Result<O, HueError> {
-        Err(HueError::ProtocolError(a.to_string()))
+impl Error for HueError {
+    fn description(&self) -> &str {
+        match self {
+            &HueError::StdError(ref s) => s,
+            &HueError::BridgeError(ref a) => &a.description,
+            &HueError::JsonError(ref json) => &json.description(),
+        }
     }
 }
 
-impl From<json::EncoderError> for HueError {
-    fn from(err: json::EncoderError) -> HueError {
-        HueError::ProtocolError(err.description().to_string())
+impl Display for HueError {
+    fn fmt(&self, formatter:&mut Formatter) -> Result<(), ::std::fmt::Error> {
+        formatter.write_str(self.description())
     }
 }
 
-impl From<json::DecoderError> for HueError {
-    fn from(err: json::DecoderError) -> HueError {
-        HueError::ProtocolError(err.description().to_string())
+impl From<::hyper::error::Error> for HueError {
+    fn from(err:hyper::error::Error) -> HueError {
+        HueError::StdError(err.description().to_string() + " (hyper)")
     }
 }
 
-impl From<json::ParserError> for HueError {
-    fn from(err: json::ParserError) -> HueError {
-        HueError::ProtocolError(err.description().to_string())
+impl From<::std::io::Error> for HueError {
+    fn from(err: ::std::io::Error) -> HueError {
+        HueError::StdError(err.description().to_string() + " (io)")
     }
 }
 
-impl From<hyper::HttpError> for HueError {
-    fn from(err: hyper::HttpError) -> HueError {
-        HueError::ProtocolError(err.description().to_string())
+impl From<::serde::json::error::Error> for HueError {
+    fn from(err: ::serde::json::error::Error) -> HueError {
+        HueError::JsonError(err)
     }
 }
 
-impl From<ParseIntError> for HueError {
-    fn from(err: ParseIntError) -> HueError {
-        HueError::ProtocolError(Error::description(&err).to_string())
+impl From<::std::string::FromUtf8Error> for HueError {
+    fn from(err: ::std::string::FromUtf8Error) -> HueError {
+        HueError::StdError(err.description().to_string() + " (utf8)")
+    }
+}
+
+impl From<::std::num::ParseIntError> for HueError {
+    fn from(err: ::std::num::ParseIntError) -> HueError {
+        HueError::StdError(err.description().to_string() + " (parseint)")
     }
 }
