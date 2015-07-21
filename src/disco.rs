@@ -3,7 +3,7 @@ use rustc_serialize::json;
 use errors::HueError;
 
 pub fn discover_hue_bridge() -> Result<String, HueError> {
-    let mut client = hyper::Client::new();
+    let client = hyper::Client::new();
 
     let mut res = try!(client.get("https://www.meethue.com/api/nupnp").send());
 
