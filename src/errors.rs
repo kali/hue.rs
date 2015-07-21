@@ -70,8 +70,8 @@ impl From<json::ParserError> for HueError {
     }
 }
 
-impl From<hyper::HttpError> for HueError {
-    fn from(err: hyper::HttpError) -> HueError {
+impl From<hyper::error::Error> for HueError {
+    fn from(err: hyper::error::Error) -> HueError {
         HueError::ProtocolError(err.description().to_string())
     }
 }

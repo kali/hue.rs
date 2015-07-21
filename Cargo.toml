@@ -12,5 +12,5 @@ keywords = [ "Philips", "hue", "light", "bulb" ]
 
 [dependencies]
 regex = "0.1.17"
-hyper = "0.3.0"
+hyper = "0.6.4"
 rustc-serialize = "0.3.0"
