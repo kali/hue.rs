@@ -39,12 +39,13 @@ pub struct CommandLight {
     pub bri:Option<u8>,
     pub hue:Option<u16>,
     pub sat:Option<u8>,
+    pub ct:Option<u16>,
     pub transitiontime:Option<u16>,
 }
 
 impl CommandLight {
     pub fn empty() -> CommandLight {
-        CommandLight { on:None, bri:None, hue:None, sat:None, transitiontime:None }
+        CommandLight { on:None, bri:None, hue:None, sat:None, transitiontime:None, ct:None }
     }
     pub fn on() -> CommandLight {
         CommandLight { on:Some(true), ..CommandLight::empty() }
@@ -60,6 +61,9 @@ impl CommandLight {
     }
     pub fn with_sat(&self, s:u8) -> CommandLight {
         CommandLight { sat:Some(s), ..*self }
+    }
+    pub fn with_ct(&self, c:u16) -> CommandLight {
+        CommandLight { ct:Some(c), ..*self }
     }
 }
 
