@@ -15,7 +15,8 @@ pub struct LightState {
     pub on: bool,
     pub bri: u8,
     pub hue: u16,
-    pub sat: u8
+    pub sat: u8,
+    pub ct: Option<u16>,
 }
 
 #[derive(Debug,Clone,RustcDecodable)]
