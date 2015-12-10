@@ -1,6 +1,5 @@
 extern crate hueclient;
 extern crate regex;
-extern crate hsl;
 
 use std::env;
 use regex::Regex;
@@ -51,11 +50,11 @@ fn main() {
             let caps = re_rrggbb.captures(&command).unwrap();
             let mut command = hueclient::bridge::CommandLight::on();
             let rgb:Vec<u8> = [ caps.at(1), caps.at(2), caps.at(3) ].iter().map( |s| u8::from_str_radix(s.unwrap(), 16).unwrap() ).collect();
-            let hsl = hsl::HSL::from_rgb(&rgb[0..3]);
-            println!("{:?}", hsl);
-            command.hue = Some((hsl.h * 65535f64 / 360f64) as u16);
-            command.sat = Some((hsl.s * 255f64) as u8);
-            command.bri = Some((hsl.l * 255f64) as u8);
+            let hsv = rgb_to_hsv(rgb[0], rgb[1], rgb[2]);
+            println!("{:?}", hsv);
+            command.hue = Some((hsv.0 * 65535f64) as u16);
+            command.sat = Some((hsv.1 * 255f64) as u8);
+            command.bri = Some((hsv.2 * 255f64) as u8);
             command
         }
         _ => panic!("can not understand command {:?}", command)
@@ -66,5 +65,29 @@ fn main() {
     for l in lights.iter() {
         println!("{:?}", bridge.set_light_state(*l, parsed));
         std::thread::sleep_ms(50)
+    }
+}
+
+
+fn rgb_to_hsv(r:u8, g:u8, b:u8) -> (f64,f64,f64) {
+    let r = r as f64/255f64;
+    let g = g as f64/255f64;
+    let b = b as f64/255f64;
+    let max = r.max(g.max(b));
+    let min = r.min(g.min(b));
+
+    if max == min {
+        (0f64, 0f64, max)
+    } else {
+        let d = max-min;
+        let s = d/max;
+        let h = if max==r {
+            (g-b) / d + (if g < b { 6f64 } else { 0f64 })
+        } else if max==g {
+            (b-r) / d + 2f64
+        } else {
+            (r-g) / d + 4f64
+        };
+        (h/6f64, s, max)
     }
 }
