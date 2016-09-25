@@ -1,6 +1,6 @@
 # Rust library for Philips Hue
 
-[![Build Status](https://travis-ci.org/kali/hue.rs.svg?branch=master)](https://travis-ci.org/kali/hue.rs)
+[![Build Status](https://travis-ci.org/gugi9000/hue.rs.svg?branch=master)](https://travis-ci.org/gugi9000/hue.rs)
 
 ## Features
  - discover bridge by querying philips hue website (upnp not implemented)
