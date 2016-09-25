@@ -4,7 +4,7 @@ use hyper::client::response::Response;
 use disco;
 use rustc_serialize::json;
 use rustc_serialize::json::Json;
-use rustc_serialize::{ Decodable, Encodable };
+use rustc_serialize::{Decodable};
 use errors::HueError;
 use errors::AppError;
 use regex::Regex;

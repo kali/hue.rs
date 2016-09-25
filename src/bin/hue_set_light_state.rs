@@ -2,6 +2,7 @@ extern crate hueclient;
 extern crate regex;
 
 use std::env;
+use std::time::Duration;
 use regex::Regex;
 
 #[allow(dead_code)]
@@ -64,7 +65,7 @@ fn main() {
     }
     for l in lights.iter() {
         println!("{:?}", bridge.set_light_state(*l, parsed));
-        std::thread::sleep_ms(50)
+        std::thread::sleep(Duration::from_millis(50))
     }
 }
 
