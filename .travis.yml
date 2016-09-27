@@ -7,3 +7,7 @@ rust:
 matrix:
   allow_failures:
     - rust: nightly
+
+notifications:
+  slack:  orangenosecom:QJxZDN5HgeuEoYNM9ANJeMVV
+  
