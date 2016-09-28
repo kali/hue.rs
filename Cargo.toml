@@ -1,10 +1,13 @@
 [package]
 
-name = "hueclient"
-version = "0.3.2"
-authors = ["Mathieu Poumeyrol <kali@zoy.org>", "Bjarke Sørensen <bs@wasd.dk>"]
+name = "philipshue"
+version = "0.0.1"
+authors = [
+  "Bjarke Sørensen <bs@wasd.dk>",
+  "Lucas Falch Sørensen <lucas@wasd.dk>"
+]
 description = "Rust library for Philips Hue lights"
-homepage = "http://github.com/gugi9000/hue.rs"
+homepage = "http://orangenose.com/products/philipshue"
 repository = "http://github.com/gugi9000/hue.rs"
 readme = "README.md"
 license = "MIT"

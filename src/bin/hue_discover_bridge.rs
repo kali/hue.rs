@@ -1,5 +1,5 @@
-extern crate hueclient;
-use hueclient::bridge::Bridge;
+extern crate philipshue;
+use philipshue::bridge::Bridge;
 
 fn main() {
     let bridge = Bridge::discover().unwrap();
