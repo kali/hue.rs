@@ -4,9 +4,14 @@ environment:
   OPENSSL_LIBS: ssleay32:libeay32
   matrix:
   - TARGET: x86_64-pc-windows-msvc
+    BITS: 64
   - TARGET: i686-pc-windows-msvc
-  - TARGET: i686-pc-windows-gnu
+    BITS: 32
   - TARGET: x86_64-pc-windows-gnu
+    BITS: 64
+  - TARGET: i686-pc-windows-gnu
+    BITS: 32
+
 install:
   - ps: Start-FileDownload "http://slproweb.com/download/Win${env:BITS}OpenSSL-1_0_2h.exe"
   - Win%BITS%OpenSSL-1_0_2h.exe /SILENT /VERYSILENT /SP- /DIR="C:\OpenSSL"
