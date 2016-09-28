@@ -5,7 +5,6 @@ use std::env;
 use std::time::Duration;
 use regex::Regex;
 
-#[allow(dead_code)]
 fn main() {
     let args:Vec<String> = env::args().collect();
     if args.len() < 4 {

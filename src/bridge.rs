@@ -1,7 +1,7 @@
 use hyper::Client;
 use hyper::client::Body;
 use hyper::client::response::Response;
-use disco;
+use discover;
 use rustc_serialize::json;
 use rustc_serialize::json::Json;
 use rustc_serialize::{Decodable};
@@ -77,7 +77,7 @@ pub struct Bridge {
 impl Bridge {
     #[allow(dead_code)]
     pub fn discover() -> Option<Bridge> {
-        disco::discover_hue_bridge().ok().map( |i| Bridge{ ip:i, username:None } )
+        discover::discover_hue_bridge().ok().map( |i| Bridge{ ip:i, username:None } )
     }
 
     pub fn discover_required() -> Bridge {

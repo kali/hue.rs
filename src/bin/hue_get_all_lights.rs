@@ -1,7 +1,6 @@
 extern crate hueclient;
 use std::env;
 
-#[allow(dead_code)]
 fn main() {
     let args:Vec<String> = env::args().collect();
     if args.len() < 2 {
