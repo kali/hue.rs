@@ -1,13 +1,11 @@
 language: rust
 rust:
-  - nightly
-  - beta
-  - stable
-
+- nightly
+- beta
+- stable
 matrix:
   allow_failures:
-    - rust: nightly
-
+  - rust: nightly
 notifications:
-  slack:  orangenosecom:QJxZDN5HgeuEoYNM9ANJeMVV
-  
+  slack:
+    secure: YZlLJTeRb6MTd3xooYYh9zyPz0PA3RpCfcHmoNq1UIGINUPL13cGiY8Ppf/Ug45K3+8Siox2PrhWp1IX55/UdkCDLjbD0zYKO8Xq9S2NHWKcxyssUJkVgwPp4Zc/+70z0QNN36jaiIgrYcfsOPbRTAO34WJ1yZKuQxIqEKOn73hVBpAgKl3NagkWzFh2s+n+Tu12otI3ZYhDqEt+Sm4b99EorkFcoVtE1YqFYiZvJmooe8R4ym5gkwkz/7kqS1I7MY83eUStlBvSfbn9DcUKykFsrqa+j86BNSu39dx3jDqzE4pBWYD5vzYPvcZQUB2yADc3hHdEX4np12eFrGaCzyntRHr+zmiovUQ8b/8m7MXoJzTDtuJdAHAVH3WksTVF5kmhP9DPCE9L/OsrjE48Ktu5oJ9czXDwYaf6BbNPZgyjCuiBidBui/4LNjOocNu1cqpMNRRSynM3eXY9T7n910VEn3ooBtca+RGmURambZpz2XTd4cJmGy3QS5VZmPG+oCOVj9cC7EnTc6Kxb7/bPpg7ahl0nenSu1XfXvdI2Ac9qbkc1UGIM8vLV7cZAkF2iQLfSDmMD0t53HkkEfsgAkwAuJoRRynkXqXxrGCjF42vSVR3qbZMHLqerjZZVxRMO2G4z3gVMbRrWacw1cSZ3lcZS5wQj2Iv7LNDHR/wqDw=
