@@ -2,12 +2,12 @@
 
 name = "hueclient"
 version = "0.3.2"
-authors = ["Mathieu Poumeyrol <kali@zoy.org>"]
+authors = ["Mathieu Poumeyrol <kali@zoy.org>", "Bjarke Sørensen <bs@wasd.dk>"]
 description = "Rust library for Philips Hue lights"
-homepage = "http://github.com/kali/hue.rs"
-repository = "http://github.com/kali/hue.rs"
+homepage = "http://github.com/gugi9000/hue.rs"
+repository = "http://github.com/gugi9000/hue.rs"
 readme = "README.md"
-license = "WTFPL"
+license = "MIT"
 keywords = [ "Philips", "hue", "light", "bulb" ]
 
 [dependencies]
