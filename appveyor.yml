@@ -13,8 +13,8 @@ environment:
     BITS: 32
 
 install:
-  - ps: Start-FileDownload "http://slproweb.com/download/Win${env:BITS}OpenSSL-1_1_0b.exe"
-  - Win%BITS%OpenSSL-1_1_0b.exe /SILENT /VERYSILENT /SP- /DIR="C:\OpenSSL"
+  - ps: Start-FileDownload "http://slproweb.com/download/Win${env:BITS}OpenSSL-1_0_1u.exe"
+  - Win%BITS%OpenSSL-1_0_1u.exe /SILENT /VERYSILENT /SP- /DIR="C:\OpenSSL"
   - ps: Start-FileDownload "https://static.rust-lang.org/dist/rust-1.11.0-${env:TARGET}.exe"
   - rust-1.11.0-%TARGET%.exe /VERYSILENT /NORESTART /DIR="C:\Program Files (x86)\Rust"
   - SET PATH=%PATH%;C:\Program Files (x86)\Rust\bin
