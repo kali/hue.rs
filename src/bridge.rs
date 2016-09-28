@@ -54,17 +54,17 @@ impl CommandLight {
     pub fn off() -> CommandLight {
         CommandLight { on:Some(false), ..CommandLight::empty() }
     }
-    pub fn with_bri(&self, b:u8) -> CommandLight {
-        CommandLight { bri:Some(b), ..*self }
+    pub fn with_bri(self, b:u8) -> CommandLight {
+        CommandLight { bri:Some(b), ..self }
     }
-    pub fn with_hue(&self, h:u16) -> CommandLight {
-        CommandLight { hue:Some(h), ..*self }
+    pub fn with_hue(self, h:u16) -> CommandLight {
+        CommandLight { hue:Some(h), ..self }
     }
-    pub fn with_sat(&self, s:u8) -> CommandLight {
-        CommandLight { sat:Some(s), ..*self }
+    pub fn with_sat(self, s:u8) -> CommandLight {
+        CommandLight { sat:Some(s), ..self }
     }
-    pub fn with_ct(&self, c:u16) -> CommandLight {
-        CommandLight { ct:Some(c), ..*self }
+    pub fn with_ct(self, c:u16) -> CommandLight {
+        CommandLight { ct:Some(c), ..self }
     }
 }
 
