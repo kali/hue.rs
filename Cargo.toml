@@ -8,7 +8,7 @@ authors = [
 ]
 description = "Rust library for Philips Hue lights"
 homepage = "http://orangenose.com/products/philipshue"
-repository = "http://github.com/gugi9000/hue.rs"
+repository = "http://github.com/gugi9000/philipshue"
 readme = "README.md"
 license = "MIT"
 keywords = [ "Philips", "hue", "light", "bulb" ]
