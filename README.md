@@ -1,6 +1,6 @@
 # A library and tools for Philips Hue lights
 
-[![Build Status](https://travis-ci.org/gugi9000/philipshue.svg?branch=master)](https://travis-ci.org/gugi9000/hue.rs) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/gugi9000/philipshue?branch=master&svg=true)](https://ci.appveyor.com/project/gugi9000/philipshue)
+[![Build Status](https://travis-ci.org/Orangenosecom/philipshue.svg?branch=master)](https://travis-ci.org/Orangenosecom/hue.rs) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/Orangenosecom/philipshue?branch=master&svg=true)](https://ci.appveyor.com/project/Orangenosecom/philipshue)
 
 ## Features
  - discover bridge by querying philips hue website *
