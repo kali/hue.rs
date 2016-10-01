@@ -1,191 +1,208 @@
-use hyper::Client;
-use hyper::client::Body;
-use hyper::client::response::Response;
-use discover;
-use rustc_serialize::json;
-use rustc_serialize::json::Json;
-use rustc_serialize::Decodable;
-use errors::HueError;
-use errors::AppError;
-use regex::Regex;
 use std::str::FromStr;
 
-#[derive(Debug,Copy,Clone,RustcDecodable)]
-pub struct LightState {
-    pub on: bool,
-    pub bri: u8,
-    pub hue: u16,
-    pub sat: u8,
-    pub ct: Option<u16>,
+use regex::Regex;
+
+use hyper::Client;
+use hyper::client::Body;
+
+use rustc_serialize::Decodable;
+use rustc_serialize::json::{self, Json};
+
+use errors::HueError;
+use ::hue::*;
+
+/// Attempts to discover bridges using `https://www.meethue.com/api/nupnp`
+pub fn discover() -> Result<Vec<Discovery>, HueError> {
+    let client = Client::new();
+
+    let mut res = try!(client.get("https://www.meethue.com/api/nupnp").send());
+
+    <Vec<Discovery>>::decode(&mut json::Decoder::new(try!(json::Json::from_reader(&mut res))))
+    .map_err(From::from)
 }
 
-#[derive(Debug,Clone,RustcDecodable)]
-pub struct Light {
-    pub name: String,
-    pub modelid: String,
-    pub swversion: String,
-    pub uniqueid: String,
-    pub state: LightState,
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+/// Responses from the `discover` function
+pub struct Discovery{
+    id: String,
+    internalipaddress: String
 }
 
-#[derive(Debug,Clone)]
-pub struct IdentifiedLight {
-    pub id: usize,
-    pub light: Light,
-}
-
-#[derive(Debug,Clone,Copy,RustcEncodable,RustcDecodable)]
-pub struct CommandLight {
-    pub on: Option<bool>,
-    pub bri: Option<u8>,
-    pub hue: Option<u16>,
-    pub sat: Option<u8>,
-    pub ct: Option<u16>,
-    pub transitiontime: Option<u16>,
-}
-
-impl CommandLight {
-    pub fn empty() -> CommandLight {
-        CommandLight {
-            on: None,
-            bri: None,
-            hue: None,
-            sat: None,
-            transitiontime: None,
-            ct: None,
+impl Discovery {
+    /// Returns a `BridgeBuilder` with the ip of the bridge discovered
+    pub fn build_bridge(self) -> BridgeBuilder{
+        let Discovery{internalipaddress,..} = self;
+        BridgeBuilder{
+            ip: internalipaddress
         }
     }
-    pub fn on() -> CommandLight {
-        CommandLight { on: Some(true), ..CommandLight::empty() }
+    /// The ip of this discovered bridge
+    pub fn ip(&self) -> &str{
+        &self.internalipaddress
     }
-    pub fn off() -> CommandLight {
-        CommandLight { on: Some(false), ..CommandLight::empty() }
+    /// The id of this discovered bridge
+    pub fn id(&self) -> &str{
+        &self.id
     }
-    pub fn with_bri(self, b: u8) -> CommandLight {
-        CommandLight { bri: Some(b), ..self }
+}
+
+/// A builder object for a `Bridge`
+#[derive(Debug)]
+pub struct BridgeBuilder{
+    ip: String
+}
+
+impl BridgeBuilder{
+    /// Starts building a `Bridge` from the given IP
+    pub fn from_ip(ip: String) -> Self{
+        BridgeBuilder{
+            ip: ip
+        }
     }
-    pub fn with_hue(self, h: u16) -> CommandLight {
-        CommandLight { hue: Some(h), ..self }
+    /// Returns a `Bridge` from an already existing user
+    pub fn from_username(self, username: String) -> Bridge {
+        let BridgeBuilder{ip} = self;
+        Bridge {
+            client: Client::new(),
+            username: username,
+            ip: ip
+        }
     }
-    pub fn with_sat(self, s: u8) -> CommandLight {
-        CommandLight { sat: Some(s), ..self }
-    }
-    pub fn with_ct(self, c: u16) -> CommandLight {
-        CommandLight { ct: Some(c), ..self }
+    /// Registers a new user on the bridge
+    pub fn register_user(self, devicetype: &str) -> RegisterIter{
+        RegisterIter(Some(self), devicetype)
     }
 }
 
 #[derive(Debug)]
+/// Iterator that tries to register a new user each iteration
+/// ## Example
+/// ```no_run
+/// use philipshue::errors::{HueError, BridgeError};
+///
+/// let mut bridge = None;
+/// // Discover a bridge
+/// let discovery = philipshue::bridge::discover().unwrap().pop().unwrap();
+/// let devicetype = "my_hue_app#iphone";
+///
+/// // Keep trying to register a user
+/// for res in discovery.build_bridge().register_user(devicetype){
+///     match res{
+///         // A new user has succesfully been registered and a `Bridge` object is returned
+///         Ok(r) => {
+///             bridge = Some(r);
+///         },
+///         // Prompt the user to press the link button
+///         Err(HueError::BridgeError{error: BridgeError::LinkButtonNotPressed, ..}) => {
+///             println!("Please, press the link on the bridge. Retrying in 5 seconds");
+///             std::thread::sleep(std::time::Duration::from_secs(5));
+///         },
+///         // Some other error happened
+///         Err(e) => {
+///             println!("Unexpected error occured: {:?}", e);
+///             break
+///         }
+///     }
+/// }
+/// ```
+pub struct RegisterIter<'a>(Option<BridgeBuilder>, &'a str);
+
+impl<'a> Iterator for RegisterIter<'a> {
+    type Item = Result<Bridge, HueError>;
+    fn next(&mut self) -> Option<Self::Item>{
+        if self.0.is_some(){
+            let client = Client::new();
+            let bb = ::std::mem::replace(&mut self.0, None).unwrap();
+
+            let body = format!("{{\"devicetype\": {:?}}}", self.1);
+            let body = body.as_bytes();
+            let url = format!("http://{}/api", bb.ip);
+            let mut resp = match client.post(&url)
+                .body(Body::BufBody(body, body.len()))
+                .send() {
+                    Ok(r) => r,
+                    Err(e) => return Some(Err(HueError::from(e)))
+                };
+
+
+            let rur = match Json::from_reader(&mut resp)
+            .map_err(From::from)
+            .and_then(|r| <Vec<HueResponse<User>>>::decode(&mut json::Decoder::new(r))) {
+                Ok(mut r) => r.pop().unwrap(),
+                Err(e) => return Some(Err(HueError::from(e)))
+            };
+
+            Some(if let Some(User{username}) = rur.success{
+                let BridgeBuilder{ip} = bb;
+
+                Ok(Bridge{
+                    ip: ip,
+                    client: client,
+                    username: username
+                })
+            }else if let Some(error) = rur.error{
+                self.0 = Some(bb);
+                Err(error.into())
+            }else{
+                Err(HueError::MalformedResponse)
+            })
+        }else{
+            None
+        }
+    }
+}
+
+#[derive(Debug)]
+/// The bridge connection
 pub struct Bridge {
-    ip: String,
-    username: Option<String>,
+    client: Client,
+    /// The IP address of the bridge
+    pub ip: String,
+    /// The username for the user on the bridge
+    pub username: String,
 }
 
 impl Bridge {
-    #[allow(dead_code)]
-    pub fn discover() -> Option<Bridge> {
-        discover::discover_hue_bridge().ok().map(|i| {
-            Bridge {
-                ip: i,
-                username: None,
-            }
-        })
-    }
-
-    pub fn discover_required() -> Bridge {
-        Bridge::discover().unwrap_or_else(|| panic!("No bridge found!"))
-    }
-
-    pub fn with_user(self, username: String) -> Bridge {
-        Bridge { username: Some(username), ..self }
-    }
-
-    pub fn register_user(&self, devicetype: &str, username: &str) -> Result<Json, HueError> {
-        if username.len() < 10 || username.len() > 40 {
-            return HueError::wrap("username must be between 10 and 40 characters");
-        }
-        #[derive(RustcDecodable, RustcEncodable)]
-        struct PostApi {
-            devicetype: String,
-            username: String,
-        }
-        let obtain = PostApi {
-            devicetype: devicetype.to_string(),
-            username: username.to_string(),
-        };
-        let body = try!(json::encode(&obtain));
-        let client = Client::new();
-        let url = format!("http://{}/api", self.ip);
-        let mut resp = try!(client.post(&url[..])
-            .body(Body::BufBody(body.as_bytes(), body.as_bytes().len()))
-            .send());
-        self.parse_write_resp(&mut resp)
-    }
-
+    /// Gets all lights from the bridge
     pub fn get_all_lights(&self) -> Result<Vec<IdentifiedLight>, HueError> {
         let url = format!("http://{}/api/{}/lights",
                           self.ip,
-                          self.username.clone().unwrap());
-        let client = Client::new();
-        let mut resp = try!(client.get(&url[..]).send());
+                          self.username);
+
+        let mut resp = try!(self.client.get(&url).send());
         let json = try!(json::Json::from_reader(&mut resp));
-        let json_object = try!(json.as_object().ok_or(HueError::ProtocolError("malformed bridge response".to_string())));
-        let mut lights: Vec<IdentifiedLight> = try!(json_object.iter()
+        let json_object = try!(json.as_object().ok_or(HueError::MalformedResponse));
+        let mut lights: Vec<IdentifiedLight> = try!(json_object.into_iter()
             .map(|(k, v)| -> Result<IdentifiedLight, HueError> {
                 let id: usize = try!(usize::from_str(k));
                 let mut decoder = json::Decoder::new(v.clone());
-                let light = try!(<Light as Decodable>::decode(&mut decoder));
+                let light = try!(Light::decode(&mut decoder));
                 Ok(IdentifiedLight {
                     id: id,
                     light: light,
                 })
             })
             .collect());
-        lights.sort_by(|a, b| a.id.cmp(&b.id));
+        lights.sort_by_key(|x| x.id);
         Ok(lights)
     }
-
-    pub fn set_light_state(&self, light: usize, command: CommandLight) -> Result<Json, HueError> {
+    /// Sends a `LightCommand` to set the state of a light
+    pub fn set_light_state(&self, light: usize, command: LightCommand) -> Result<Json, HueError> {
         let url = format!("http://{}/api/{}/lights/{}/state",
                           self.ip,
-                          self.username.clone().unwrap(),
+                          self.username,
                           light);
         let body = try!(json::encode(&command));
-        let re1 = Regex::new("\"[a-z]*\":null").unwrap();
+        let re1 = Regex::new("\"[a-z]*\":null,?").unwrap();
         let cleaned1 = re1.replace_all(&body, "");
-        let re2 = Regex::new(",+").unwrap();
-        let cleaned2 = re2.replace_all(&cleaned1, ",");
-        let re3 = Regex::new(",\\}").unwrap();
-        let cleaned3 = re3.replace_all(&cleaned2, "}");
-        let re3 = Regex::new("\\{,").unwrap();
-        let cleaned4 = re3.replace_all(&cleaned3, "{");
-        let client = Client::new();
-        let mut resp = try!(client.put(&url[..])
-            .body(Body::BufBody(cleaned4.as_bytes(), cleaned4.as_bytes().len()))
-            .send());
-        self.parse_write_resp(&mut resp)
-    }
+        let re2 = Regex::new(",\\}").unwrap();
+        let cleaned2 = re2.replace_all(&cleaned1, "}");
+        let body = cleaned2.as_bytes();
 
-    fn parse_write_resp(&self, resp: &mut Response) -> Result<Json, HueError> {
-        let json = try!(json::Json::from_reader(resp));
-        let objects = try!(json.as_array()
-            .ok_or(HueError::ProtocolError("expected array".to_string())));
-        if objects.len() == 0 {
-            return Err(HueError::ProtocolError("expected non-empty array".to_string()));
-        }
-        let object = try!(objects[0]
-            .as_object()
-            .ok_or(HueError::ProtocolError("expected first item to be an object".to_string())));
-        let obj = object.get(&"error".to_string()).and_then(|o| o.as_object());
-        match obj {
-            Some(e) => {
-                let error = e.clone();
-                let mut decoder = json::Decoder::new(json::Json::Object(error));
-                let actual_error = try!(AppError::dec(&mut decoder));
-                // println!("actual: {:?}",actual_error);
-                Err(HueError::BridgeError(actual_error))
-            }
-            None => Ok(json.clone()),
-        }
+        let mut resp = try!(self.client.put(&url)
+            .body(Body::BufBody(body, body.len()))
+            .send());
+
+        Json::from_reader(&mut resp).map_err(From::from)
     }
 }

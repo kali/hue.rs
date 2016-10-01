@@ -5,14 +5,16 @@ use std::env;
 use std::time::Duration;
 use regex::Regex;
 
+use philipshue::hue::LightCommand;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 4 {
-        println!("usage : {:?} <username> <light_id>,<light_id>,... on|off|[bri]:[hue]:[sat]|[ct]MK:[bri]|[w]K:[bri]|[RR][GG][BB]:[bri] [transition_time]",
+        println!("usage : {:?} <username> <light_id>,<light_id>,... on|off|[bri]:[hue]:[sat]|[ct]MK:[bri]|[w]K:[bri]|[RR][GG][BB]:[bri]",
                  args[0]);
         return;
     }
-    let bridge = ::philipshue::bridge::Bridge::discover_required().with_user(args[1].to_string());
+    let bridge = philipshue::bridge::discover().unwrap().pop().unwrap().build_bridge().from_username(args[1].clone());
     let ref lights: Vec<usize> = args[2].split(",").map(|s| s.parse::<usize>().unwrap()).collect();
     println!("lights: {:?}", lights);
     let ref command = args[3];
@@ -20,49 +22,49 @@ fn main() {
     let re_mired = Regex::new("([0-9]{0,4})MK:([0-9]{0,5})").unwrap();
     let re_kelvin = Regex::new("([0-9]{4,4})K:([0-9]{0,5})").unwrap();
     let re_rrggbb = Regex::new("([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})").unwrap();
-    let mut parsed = match &command[..] {
-        "on" => philipshue::bridge::CommandLight::on(),
-        "off" => philipshue::bridge::CommandLight::off(),
+
+    let mut light_command = LightCommand::default();
+
+    let parsed = match &command[..] {
+        "on" => light_command.on(),
+        "off" => light_command.off(),
         _ if re_triplet.is_match(&command) => {
             let caps = re_triplet.captures(&command).unwrap();
-            let mut command = philipshue::bridge::CommandLight::on();
-            command.bri = caps.at(1).and_then(|s| s.parse::<u8>().ok());
-            command.hue = caps.at(2).and_then(|s| s.parse::<u16>().ok());
-            command.sat = caps.at(3).and_then(|s| s.parse::<u8>().ok());
-            command
+
+            light_command.bri = caps.at(1).and_then(|s| s.parse::<u8>().ok());
+            light_command.hue = caps.at(2).and_then(|s| s.parse::<u16>().ok());
+            light_command.sat = caps.at(3).and_then(|s| s.parse::<u8>().ok());
+            light_command
         }
         _ if re_mired.is_match(&command) => {
             let caps = re_mired.captures(&command).unwrap();
-            let mut command = philipshue::bridge::CommandLight::on();
-            command.ct = caps.at(1).and_then(|s| s.parse::<u16>().ok());
-            command.bri = caps.at(2).and_then(|s| s.parse::<u8>().ok());
-            command.sat = Some(254);
-            command
+
+            light_command.ct = caps.at(1).and_then(|s| s.parse::<u16>().ok());
+            light_command.bri = caps.at(2).and_then(|s| s.parse::<u8>().ok());
+            light_command.sat = Some(254);
+            light_command
         }
         _ if re_kelvin.is_match(&command) => {
             let caps = re_kelvin.captures(&command).unwrap();
-            let mut command = philipshue::bridge::CommandLight::on();
-            command.ct = caps.at(1).and_then(|s| s.parse::<u32>().ok().map(|k| (1000000u32 / k) as u16));
-            command.bri = caps.at(2).and_then(|s| s.parse::<u8>().ok());
-            command.sat = Some(254);
-            command
+
+            light_command.ct = caps.at(1).and_then(|s| s.parse::<u32>().ok().map(|k| (1000000u32 / k) as u16));
+            light_command.bri = caps.at(2).and_then(|s| s.parse::<u8>().ok());
+            light_command.sat = Some(254);
+            light_command
         }
         _ if re_rrggbb.is_match(&command) => {
             let caps = re_rrggbb.captures(&command).unwrap();
-            let mut command = philipshue::bridge::CommandLight::on();
+
             let rgb: Vec<u8> = [caps.at(1), caps.at(2), caps.at(3)].iter().map(|s| u8::from_str_radix(s.unwrap(), 16).unwrap()).collect();
             let hsv = rgb_to_hsv(rgb[0], rgb[1], rgb[2]);
             println!("{:?}", hsv);
-            command.hue = Some((hsv.0 * 65535f64) as u16);
-            command.sat = Some((hsv.1 * 255f64) as u8);
-            command.bri = Some((hsv.2 * 255f64) as u8);
-            command
+            light_command.hue = Some((hsv.0 * 65535f64) as u16);
+            light_command.sat = Some((hsv.1 * 255f64) as u8);
+            light_command.bri = Some((hsv.2 * 255f64) as u8);
+            light_command
         }
         _ => panic!("can not understand command {:?}", command),
     };
-    if args.len() == 5 {
-        parsed.transitiontime = args[4].parse::<u16>().ok();
-    }
     for l in lights.iter() {
         println!("{:?}", bridge.set_light_state(*l, parsed));
         std::thread::sleep(Duration::from_millis(50))
