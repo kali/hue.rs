@@ -104,7 +104,7 @@ error_enum!{
 }
 
 #[test]
-fn bride_errors() {
+fn bridge_errors() {
     use self::BridgeError::*;
 
     assert_eq!(BridgeError::from(101), LinkButtonNotPressed);

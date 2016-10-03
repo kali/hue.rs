@@ -26,7 +26,7 @@ pub struct Light {
     pub swversion: String,
     /// Unique ID of the device
     pub uniqueid: String,
-    /// The state of the light (`LightState` for more)
+    /// The state of the light (See `LightState` for more)
     pub state: LightState
 }
 
