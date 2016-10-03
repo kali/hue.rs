@@ -2,7 +2,8 @@
 
 //! Crate for communicating with the hue API
 
-extern crate rustc_serialize;
+extern crate serde;
+extern crate serde_json;
 extern crate hyper;
 extern crate regex;
 
