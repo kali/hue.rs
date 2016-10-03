@@ -1,12 +1,9 @@
-use std::str::FromStr;
-
 use regex::Regex;
 
 use hyper::Client;
 use hyper::client::Body;
 
-use rustc_serialize::Decodable;
-use rustc_serialize::json::{self, Json};
+use serde_json::{to_string, from_reader, Map, Value};
 
 use errors::HueError;
 use ::hue::*;
@@ -17,33 +14,7 @@ pub fn discover() -> Result<Vec<Discovery>, HueError> {
 
     let mut res = try!(client.get("https://www.meethue.com/api/nupnp").send());
 
-    <Vec<Discovery>>::decode(&mut json::Decoder::new(try!(json::Json::from_reader(&mut res))))
-    .map_err(From::from)
-}
-
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
-/// Responses from the `discover` function
-pub struct Discovery{
-    id: String,
-    internalipaddress: String
-}
-
-impl Discovery {
-    /// Returns a `BridgeBuilder` with the ip of the bridge discovered
-    pub fn build_bridge(self) -> BridgeBuilder{
-        let Discovery{internalipaddress,..} = self;
-        BridgeBuilder{
-            ip: internalipaddress
-        }
-    }
-    /// The ip of this discovered bridge
-    pub fn ip(&self) -> &str{
-        &self.internalipaddress
-    }
-    /// The id of this discovered bridge
-    pub fn id(&self) -> &str{
-        &self.id
-    }
+    from_reader(&mut res).map_err(From::from)
 }
 
 /// A builder object for a `Bridge`
@@ -125,9 +96,7 @@ impl<'a> Iterator for RegisterIter<'a> {
                 };
 
 
-            let rur = match Json::from_reader(&mut resp)
-            .map_err(From::from)
-            .and_then(|r| <Vec<HueResponse<User>>>::decode(&mut json::Decoder::new(r))) {
+            let rur = match from_reader::<_, Vec<HueResponse<User>>>(&mut resp) {
                 Ok(mut r) => r.pop().unwrap(),
                 Err(e) => return Some(Err(HueError::from(e)))
             };
@@ -170,13 +139,10 @@ impl Bridge {
                           self.username);
 
         let mut resp = try!(self.client.get(&url).send());
-        let json = try!(json::Json::from_reader(&mut resp));
-        let json_object = try!(json.as_object().ok_or(HueError::MalformedResponse));
-        let mut lights: Vec<IdentifiedLight> = try!(json_object.into_iter()
-            .map(|(k, v)| -> Result<IdentifiedLight, HueError> {
-                let id: usize = try!(usize::from_str(k));
-                let mut decoder = json::Decoder::new(v.clone());
-                let light = try!(Light::decode(&mut decoder));
+        let json: Map<usize, Light> = try!(from_reader(&mut resp));
+
+        let mut lights: Vec<IdentifiedLight> = try!(json.into_iter()
+            .map(|(id, light)| -> Result<IdentifiedLight, HueError> {
                 Ok(IdentifiedLight {
                     id: id,
                     light: light,
@@ -187,12 +153,12 @@ impl Bridge {
         Ok(lights)
     }
     /// Sends a `LightCommand` to set the state of a light
-    pub fn set_light_state(&self, light: usize, command: LightCommand) -> Result<Json, HueError> {
+    pub fn set_light_state(&self, light: usize, command: LightCommand) -> Result<Value, HueError> {
         let url = format!("http://{}/api/{}/lights/{}/state",
                           self.ip,
                           self.username,
                           light);
-        let body = try!(json::encode(&command));
+        let body = try!(to_string(&command));
         let re1 = Regex::new("\"[a-z]*\":null,?").unwrap();
         let cleaned1 = re1.replace_all(&body, "");
         let re2 = Regex::new(",\\}").unwrap();
@@ -203,6 +169,6 @@ impl Bridge {
             .body(Body::BufBody(body, body.len()))
             .send());
 
-        Json::from_reader(&mut resp).map_err(From::from)
+        from_reader(&mut resp).map_err(From::from)
     }
 }

@@ -12,8 +12,13 @@ repository = "http://github.com/Orangenosecom/philipshue"
 readme = "README.md"
 license = "MIT"
 keywords = [ "Philips", "hue", "light", "bulb" ]
+build = "build.rs"
+
+[build-dependencies]
+serde_codegen = "0.8"
 
 [dependencies]
 regex = "0.1.17"
 hyper = "0.9.10"
-rustc-serialize = "0.3.0"
+serde = "0.8"
+serde_json = "0.8"

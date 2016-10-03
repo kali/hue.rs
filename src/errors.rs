@@ -1,10 +1,9 @@
 use hyper;
 use std::convert::From;
-use rustc_serialize::json;
+use serde_json::Error as JsonError;
 use std::num::ParseIntError;
 
 #[derive(Debug)]
-// TODO FIXME
 /// Errors that can occur in this crate
 pub enum HueError {
     /// Error that occurs when the response from the bridge is malformed
@@ -16,12 +15,8 @@ pub enum HueError {
         /// The `BridgeError`
         error: BridgeError
     },
-    /// A `json::EncoderError`
-    EncoderError(json::EncoderError),
-    /// A `json::DecoderError`
-    DecoderError(json::DecoderError),
-    /// A `json::ParserError`
-    ParserError(json::ParserError),
+    /// A `serde_json::error::Error`
+    JsonError(JsonError),
     /// A `hyper::Error`
     HyperError(hyper::Error),
     /// An `std::num::ParseIntError`
@@ -124,21 +119,9 @@ impl From<::hue::Error> for HueError {
     }
 }
 
-impl From<json::EncoderError> for HueError {
-    fn from(err: json::EncoderError) -> HueError {
-        HueError::EncoderError(err)
-    }
-}
-
-impl From<json::DecoderError> for HueError {
-    fn from(err: json::DecoderError) -> HueError {
-        HueError::DecoderError(err)
-    }
-}
-
-impl From<json::ParserError> for HueError {
-    fn from(err: json::ParserError) -> HueError {
-        HueError::ParserError(err)
+impl From<JsonError> for HueError {
+    fn from(err: JsonError) -> HueError {
+        HueError::JsonError(err)
     }
 }
 
