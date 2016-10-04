@@ -81,9 +81,8 @@ pub struct RegisterIter<'a>(Option<BridgeBuilder>, &'a str);
 impl<'a> Iterator for RegisterIter<'a> {
     type Item = Result<Bridge, HueError>;
     fn next(&mut self) -> Option<Self::Item>{
-        if self.0.is_some(){
+        if let Some(bb) = ::std::mem::replace(&mut self.0, None){
             let client = Client::new();
-            let bb = ::std::mem::replace(&mut self.0, None).unwrap();
 
             let body = format!("{{\"devicetype\": {:?}}}", self.1);
             let body = body.as_bytes();
