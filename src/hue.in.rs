@@ -41,7 +41,7 @@ pub struct IdentifiedLight {
     pub light: Light,
 }
 
-#[derive(Debug, Default, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, Serialize)]
 /// Struct for building a command that will be sent to the Hue bridge telling it what to do with a light
 ///
 /// View [the lights-api documention](http://www.developers.meethue.com/documentation/lights-api) for more information
@@ -58,7 +58,7 @@ pub struct LightCommand {
     pub ct: Option<u16>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 /// Responses from the `discover` function
 pub struct Discovery{
     id: String,
@@ -108,7 +108,7 @@ impl LightCommand {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 /// A response that either is an error or a success
 pub struct HueResponse<T: Serialize + Deserialize>{
     /// The result from the bridge if it didn't fail
@@ -117,14 +117,14 @@ pub struct HueResponse<T: Serialize + Deserialize>{
     pub error: Option<Error>
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 /// A user object returned from the API
 pub struct User{
     /// The username of the user
     pub username: String
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 /// An error object returned from the API
 pub struct Error {
     /// The URI the error happened on
