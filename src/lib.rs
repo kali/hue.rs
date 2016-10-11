@@ -7,9 +7,9 @@ extern crate serde_json;
 extern crate hyper;
 extern crate regex;
 
-/// All things errors
+/// Errors that can occur in the crate
 pub mod errors;
-/// Module responsible for communicating with the Hue bridge
+/// Handles all the communication with the bridge
 pub mod bridge;
-/// Module with structs mapping the different JSON-objects used with Hue API
+/// Structs mapping the different JSON-objects used with Hue API
 pub mod hue;

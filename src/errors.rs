@@ -4,9 +4,11 @@ use serde_json::Error as JsonError;
 use std::num::ParseIntError;
 
 #[derive(Debug)]
-/// Errors that can occur in this crate
+/// Wrapper for all errors that can occur in this crate
 pub enum HueError {
-    /// Error that occurs when the response from the bridge is malformed
+    /// The response from the bridge was malformed
+    ///
+    /// This doesn't happen in practice
     MalformedResponse,
     /// An error that occured in the bridge
     BridgeError{
