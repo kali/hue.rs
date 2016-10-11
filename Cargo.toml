@@ -1,16 +1,24 @@
 [package]
 
-name = "hueclient"
-version = "0.3.2"
-authors = ["Mathieu Poumeyrol <kali@zoy.org>"]
+name = "philipshue"
+version = "0.0.1"
+authors = [
+  "Bjarke Sørensen <bs@wasd.dk>",
+  "Lucas Falch Sørensen <lucas@wasd.dk>"
+]
 description = "Rust library for Philips Hue lights"
-homepage = "http://github.com/kali/hue.rs"
-repository = "http://github.com/kali/hue.rs"
+homepage = "http://orangenose.com/products-philipshue"
+repository = "http://github.com/Orangenosecom/philipshue"
 readme = "README.md"
-license = "WTFPL"
+license = "MIT"
 keywords = [ "Philips", "hue", "light", "bulb" ]
+build = "build.rs"
+
+[build-dependencies]
+serde_codegen = "0.8"
 
 [dependencies]
 regex = "0.1.17"
-hyper = "0.7"
-rustc-serialize = "0.3.0"
+hyper = "0.9.10"
+serde = "0.8"
+serde_json = "0.8"

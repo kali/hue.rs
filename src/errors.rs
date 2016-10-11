@@ -1,83 +1,140 @@
 use hyper;
 use std::convert::From;
-use std::error::Error;
-use rustc_serialize::json;
-use rustc_serialize::{Encoder, Encodable, Decoder, Decodable};
+use serde_json::Error as JsonError;
 use std::num::ParseIntError;
 
 #[derive(Debug)]
-pub struct AppError {
-    pub address:String,
-    pub description:String,
-    pub code:u8
-}
-
-impl Encodable for AppError {
-  fn encode<S:Encoder>(&self, encoder: &mut S) -> Result<(), S::Error> {
-    match *self {
-      AppError{  address: ref p_address, description: ref p_description,
-                    code:p_code} => {
-        encoder.emit_struct("AppError", 0, |encoder| {
-          try!(encoder.emit_struct_field( "address", 0, |encoder| p_address.encode(encoder)));
-          try!(encoder.emit_struct_field( "description", 1, |encoder| p_description.encode(encoder)));
-          try!(encoder.emit_struct_field( "type", 2, |encoder| p_code.encode(encoder)));
-          Ok(())
-        })
-      }
-    }
-  }
-}
-
-impl AppError {
-  pub fn dec<S:Decoder>(decoder: &mut S) -> Result<AppError, S::Error> {
-    decoder.read_struct("root", 0, |decoder| {
-        Ok(AppError{
-            address: try!(decoder.read_struct_field("address", 0, |decoder| Decodable::decode(decoder))),
-            description: try!(decoder.read_struct_field("description", 1, |decoder| Decodable::decode(decoder))),
-            code: try!(decoder.read_struct_field("type", 2, |decoder| Decodable::decode(decoder)))
-        })
-    })
-  }
-}
-
-#[derive(Debug)]
+/// Wrapper for all errors that can occur in this crate
 pub enum HueError {
-    ProtocolError(String),
-    BridgeError(AppError),
+    /// The response from the bridge was malformed
+    ///
+    /// This doesn't happen in practice
+    MalformedResponse,
+    /// An error that occured in the bridge
+    BridgeError{
+        /// The URI the error happened on
+        address: String,
+        /// The `BridgeError`
+        error: BridgeError
+    },
+    /// A `serde_json::error::Error`
+    JsonError(JsonError),
+    /// A `hyper::Error`
+    HyperError(hyper::Error),
+    /// An `std::num::ParseIntError`
+    ParseIntError(ParseIntError)
 }
 
-impl HueError {
-    pub fn wrap<O> (a:&str) -> ::std::result::Result<O, HueError> {
-        Err(HueError::ProtocolError(a.to_string()))
+macro_rules! error_enum {
+    (
+        $(#[$meta:meta])*
+        pub enum $name:ident{
+            $($err:ident = $n:expr),+;
+            $other:ident
+        }
+    ) => (
+        $(#[$meta])*
+        pub enum $name{
+            $($err = $n,)+
+            $other
+        }
+        impl From<u16> for $name{
+            fn from(n: u16) -> Self{
+                match n {
+                    $($n => $name::$err,)+
+                    _ => $name::$other
+                }
+            }
+        }
+    );
+}
+
+error_enum!{
+    /// All errors defined in http://www.developers.meethue.com/documentation/error-messages
+    #[repr(u16)]
+    #[allow(missing_docs)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+    pub enum BridgeError{
+        // Generic Errors
+        UnauthorizedUser = 1,
+        BodyContainsInvalidJson = 2,
+        ResourceNotAvailable = 3,
+        MethodNotAvailableForResource = 4,
+        MissingParametersInBody = 5,
+        ParameterNotAvailable = 6,
+        InvalidValueForParameter = 7,
+        ParameterIsNotModifiable = 8,
+        TooManyItemsInList = 11,
+        ProtalConnectionRequired = 12,
+        InternalError = 901,
+
+        // Command Specific Errors
+        LinkButtonNotPressed = 101,
+        DHCPCannotBeDisabled = 110,
+        InvalidUpdateState = 111,
+        DeviceIsSetToOff = 201,
+        GroupCouldNotBeCreatedGroupFull = 301,
+        DeviceCouldNotBeAddedGroupFull = 302,
+        DeviceIsUnreachable = 304,
+        UpdateOrDeleteGroupOfThisTypeNotAllowed = 305,
+        LightAlreadyUsed = 306,
+        SceneCouldNotBeCreated = 401,
+        SceneCouldNotBeCreatedBufferFull = 402,
+        SceneCouldNotBeRemoved = 403,
+        NotAllowedToCreateSensorType = 501,
+        SensorListIsFull = 502,
+        RuleEngineFull = 601,
+        ConditionError = 607,
+        ActionError = 608,
+        UnableToActivae = 609,
+        ScheduleListIsFull = 701,
+        ScheduleTimezoneNotValid = 702,
+        ScheduleCannotSetTimeAndLocalTime = 703,
+        CannotCreateSchedule = 704,
+        CannotEnableScheduleTimeInPast = 705,
+        CommandError = 706,
+        SourceModelInvalid = 801,
+        SourceFactoryNew = 802,
+        InvalidState = 803;
+        Other
     }
 }
 
-impl From<json::EncoderError> for HueError {
-    fn from(err: json::EncoderError) -> HueError {
-        HueError::ProtocolError(err.description().to_string())
+#[test]
+fn bridge_errors() {
+    use self::BridgeError::*;
+
+    assert_eq!(BridgeError::from(101), LinkButtonNotPressed);
+    assert_eq!(BridgeError::from(0), Other);
+    assert_eq!(BridgeError::from(51234), Other);
+    assert_eq!(BridgeError::from(4), MethodNotAvailableForResource);
+    assert_eq!(SceneCouldNotBeRemoved as u16, 403);
+    assert_eq!(InternalError as u16, 901);
+}
+
+impl From<::hue::Error> for HueError {
+    fn from(::hue::Error{address, code,..}: ::hue::Error) -> Self {
+        HueError::BridgeError{
+            address: address,
+            error: From::from(code)
+        }
     }
 }
 
-impl From<json::DecoderError> for HueError {
-    fn from(err: json::DecoderError) -> HueError {
-        HueError::ProtocolError(err.description().to_string())
-    }
-}
-
-impl From<json::ParserError> for HueError {
-    fn from(err: json::ParserError) -> HueError {
-        HueError::ProtocolError(err.description().to_string())
+impl From<JsonError> for HueError {
+    fn from(err: JsonError) -> HueError {
+        HueError::JsonError(err)
     }
 }
 
 impl From<hyper::error::Error> for HueError {
     fn from(err: hyper::error::Error) -> HueError {
-        HueError::ProtocolError(err.description().to_string())
+        HueError::HyperError(err)
     }
 }
 
 impl From<ParseIntError> for HueError {
     fn from(err: ParseIntError) -> HueError {
-        HueError::ProtocolError(Error::description(&err).to_string())
+        HueError::ParseIntError(err)
     }
 }
