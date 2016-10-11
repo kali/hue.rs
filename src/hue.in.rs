@@ -3,7 +3,7 @@ use ::bridge::BridgeBuilder;
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Copy, Clone, Deserialize)]
-/// The state of the light, very similar to `LightCommand` except most fields aren't optional
+/// The state of the light with similar structure to `LightCommand`
 pub struct LightState {
     /// Whether the light is on
     pub on: bool,

@@ -8,7 +8,7 @@ use serde_json::{to_string, from_reader, Map, Value};
 use errors::HueError;
 use ::hue::*;
 
-/// Attempts to discover bridges using `https://www.meethue.com/api/nupnp`
+/// Attempt to discover bridges using `https://www.meethue.com/api/nupnp`
 pub fn discover() -> Result<Vec<Discovery>, HueError> {
     let client = Client::new();
 
@@ -17,7 +17,7 @@ pub fn discover() -> Result<Vec<Discovery>, HueError> {
     from_reader(&mut res).map_err(From::from)
 }
 
-/// A builder object for a `Bridge`
+/// A builder object for a `Bridge` object
 #[derive(Debug)]
 pub struct BridgeBuilder{
     ip: String
@@ -47,6 +47,9 @@ impl BridgeBuilder{
 
 #[derive(Debug)]
 /// Iterator that tries to register a new user each iteration
+///
+/// It will most likely respond with an error saying that the link button needs to be pressed the first time
+///
 /// ## Example
 /// ```no_run
 /// use philipshue::errors::{HueError, BridgeError};
