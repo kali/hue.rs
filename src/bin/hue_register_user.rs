@@ -4,7 +4,7 @@ use std::env;
 #[allow(while_true)]
 #[allow(dead_code)]
 fn main() {
-    let args:Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         println!("usage : {:?} <devicetype>", args[0]);
     } else {
@@ -17,12 +17,13 @@ fn main() {
                     eprint!("done: ");
                     println!("{}", r);
                     break;
-                },
-                Err(hueclient::Error(hueclient::ErrorKind::BridgeError(code, _), _)) if code == 101 => {
+                }
+                Err(hueclient::Error(hueclient::ErrorKind::BridgeError(code, _), _))
+                    if code == 101 => {
                     println!("Push the bridge button");
                     std::thread::sleep(::std::time::Duration::from_secs(5));
-                },
-                Err(e) => panic!("error {:?}", e)
+                }
+                Err(e) => panic!("error {:?}", e),
             }
         }
     }
