@@ -16,10 +16,13 @@ fn main() {
                 println!("{:2} {:20} {:5} {:3} {:5} {:3} {:4}K", l.id, l.light.name,
                     if l.light.state.on {"on"} else {"off"},
                     l.light.state.bri, l.light.state.hue, l.light.state.sat,
-                    l.light.state.ct.map( |k| 1000000u32/(k as u32)).unwrap_or(0)
+                    l.light.state.ct.map(|k| if k != 0 { 1000000u32/(k as u32 ) } else { 0}).unwrap_or(0)
                 );
             }
         },
-        Err(err) => panic!(err)
+        Err(err) => {
+            println!("Error: {}", err);
+            ::std::process::exit(2)
+        }
     }
 }

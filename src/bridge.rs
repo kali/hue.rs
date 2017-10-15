@@ -1,16 +1,14 @@
-use hyper::Client;
-use hyper::client::Body;
-use hyper::client::response::Response;
-use disco;
-use rustc_serialize::json;
-use rustc_serialize::json::Json;
-use rustc_serialize::{ Decodable, Encodable };
-use errors::HueError;
-use errors::AppError;
-use regex::Regex;
 use std::str::FromStr;
+use std::collections::HashMap;
 
-#[derive(Debug,Copy,Clone,RustcDecodable)]
+use reqwest;
+use serde_json::Value;
+
+use disco;
+use ::Result;
+
+
+#[derive(Debug,Copy,Clone,Serialize,Deserialize)]
 pub struct LightState {
     pub on: bool,
     pub bri: u8,
@@ -19,7 +17,7 @@ pub struct LightState {
     pub ct: Option<u16>,
 }
 
-#[derive(Debug,Clone,RustcDecodable)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Light {
     pub name: String,
     pub modelid: String,
@@ -34,13 +32,19 @@ pub struct IdentifiedLight {
     pub light: Light,
 }
 
-#[derive(Debug,Clone,Copy,RustcEncodable,RustcDecodable)]
+#[derive(Debug,Clone,Copy,Serialize,Deserialize)]
 pub struct CommandLight {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub on:Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub bri:Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub hue:Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub sat:Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ct:Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub transitiontime:Option<u16>,
 }
 
@@ -88,83 +92,62 @@ impl Bridge {
         Bridge{ username: Some(username), ..self }
     }
 
-    pub fn register_user(&self, devicetype:&str, username:&str) -> Result<Json,HueError> {
-        if username.len() < 10 || username.len() > 40 {
-            return HueError::wrap("username must be between 10 and 40 characters")
-        }
-        #[derive(RustcDecodable, RustcEncodable)]
-        struct PostApi {
-            devicetype: String,
-            username:String
-        }
-        let obtain = PostApi {
-            devicetype:devicetype.to_string(),
-            username:username.to_string()
-        };
-        let body = try!(json::encode(&obtain));
-        let client = Client::new();
+    pub fn register_user(&self, devicetype:&str) -> Result<String> {
+        #[derive(Serialize, Deserialize)]
+        struct PostApi { devicetype: String, }
+        #[derive(Serialize, Deserialize)]
+        struct Success { success: Username, }
+        #[derive(Serialize, Deserialize)]
+        struct Username { username: String }
+        let obtain = PostApi { devicetype:devicetype.to_string(), };
         let url = format!("http://{}/api", self.ip);
-        let mut resp = try!(client.post(&url[..])
-            .body(Body::BufBody(body.as_bytes(), body.as_bytes().len())).send());
-        self.parse_write_resp(&mut resp)
+        let client = reqwest::Client::new()?;
+        let success:Success = self.parse(client.post(&url[..])?.json(&obtain)?.send()?.json()?)?;
+        Ok(success.success.username)
     }
 
-    pub fn get_all_lights(&self) -> Result<Vec<IdentifiedLight>,HueError> {
+    pub fn get_all_lights(&self) -> Result<Vec<IdentifiedLight>> {
         let url = format!("http://{}/api/{}/lights",
             self.ip, self.username.clone().unwrap());
-        let client = Client::new();
-        let mut resp = try!(client.get(&url[..]).send());
-        let json = try!(json::Json::from_reader(&mut resp));
-        let json_object = try!(json.as_object().
-            ok_or(HueError::ProtocolError("malformed bridge response".to_string())));
-        let mut lights:Vec<IdentifiedLight> = try!(
-            json_object.iter().map( |(k,v)| -> Result<IdentifiedLight,HueError> {
-                let id:usize = try!(usize::from_str(k));
-                let mut decoder = json::Decoder::new(v.clone());
-                let light = try!(<Light as Decodable>::decode(&mut decoder));
-                Ok(IdentifiedLight{ id: id, light: light })
-        }).collect());
+        let resp:HashMap<String, Light> = self.parse(reqwest::get(&url[..])?.json()?)?;
+        let mut lights = vec!();
+        for (k,v) in resp {
+            let id:usize = usize::from_str(&k).or(Err(::ErrorKind::ProtocolError("Light id should be a number".to_string())))?;
+            lights.push(IdentifiedLight{ id: id, light: v });
+        }
         lights.sort_by( |a,b| a.id.cmp(&b.id) );
         Ok(lights)
     }
 
-    pub fn set_light_state(&self, light:usize, command:CommandLight) -> Result<Json, HueError> {
+    pub fn set_light_state(&self, light:usize, command:CommandLight) -> Result<Value> {
         let url = format!("http://{}/api/{}/lights/{}/state",
             self.ip, self.username.clone().unwrap(), light);
-        let body = try!(json::encode(&command));
-        let re1 = Regex::new("\"[a-z]*\":null").unwrap();
-        let cleaned1 = re1.replace_all(&body,"");
-        let re2 = Regex::new(",+").unwrap();
-        let cleaned2 = re2.replace_all(&cleaned1,",");
-        let re3 = Regex::new(",\\}").unwrap();
-        let cleaned3 = re3.replace_all(&cleaned2,"}");
-        let re3 = Regex::new("\\{,").unwrap();
-        let cleaned4 = re3.replace_all(&cleaned3,"{");
-        let client = Client::new();
-        let mut resp = try!(client.put(&url[..])
-            .body(Body::BufBody(cleaned4.as_bytes(), cleaned4.as_bytes().len())).send());
-        self.parse_write_resp(&mut resp)
+        let body = ::serde_json::to_vec(&command)?;
+        let client = reqwest::Client::new()?;
+        let resp = client.put(&url[..])?.body(::reqwest::Body::from(body)).send()?.json()?;
+        self.parse(resp)
     }
 
-    fn parse_write_resp(&self, resp:&mut Response) -> Result<Json,HueError> {
-        let json = try!(json::Json::from_reader(resp));
-        let objects = try!(json.as_array()
-            .ok_or(HueError::ProtocolError("expected array".to_string())));
+    fn parse<T: ::serde::de::DeserializeOwned>(&self, value:Value) -> Result<T> {
+        use serde_json::*;
+        if !value.is_array() {
+            return Ok(from_value(value)?)
+        }
+        let mut objects:Vec<Value> = from_value(value)?;
         if objects.len() == 0 {
-            return Err(HueError::ProtocolError("expected non-empty array".to_string()));
+            Err(::ErrorKind::ProtocolError("expected non-empty array".to_string()))?
         }
-        let object = try!(objects[0].as_object()
-            .ok_or(HueError::ProtocolError("expected first item to be an object".to_string())));
-        let obj = object.get(&"error".to_string()).and_then( |o| o.as_object() );
-        match obj {
-            Some(e) => {
-                let error = e.clone();
-                let mut decoder = json::Decoder::new(json::Json::Object(error));
-                let actual_error = try!(AppError::dec(&mut decoder));
-                //println!("actual: {:?}",actual_error);
-                Err(HueError::BridgeError(actual_error))
-            },
-            None => Ok(json.clone())
+        let value = objects.remove(0);
+        {
+            let object = value.as_object()
+                .ok_or(::ErrorKind::ProtocolError("expected first item to be an object".to_string()))?;
+            if let Some(e) = object.get("error").and_then( |o| o.as_object() ) {
+                let code:u64 = e.get("type").and_then(|s| s.as_u64()).unwrap_or(0);
+                let desc = e.get("description").and_then(|s| s.as_str()).unwrap_or("").to_string();
+                Err(::ErrorKind::BridgeError(code as usize, desc))?
+            }
         }
+        Ok(from_value(value)?)
     }
+
 }
