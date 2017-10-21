@@ -32,7 +32,7 @@ pub struct IdentifiedLight {
     pub light: Light,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandLight {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub on: Option<bool>,
@@ -46,10 +46,12 @@ pub struct CommandLight {
     pub ct: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transitiontime: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alert: Option<String>,
 }
 
-impl CommandLight {
-    pub fn empty() -> CommandLight {
+impl Default for CommandLight {
+    fn default() -> CommandLight {
         CommandLight {
             on: None,
             bri: None,
@@ -57,42 +59,52 @@ impl CommandLight {
             sat: None,
             transitiontime: None,
             ct: None,
+            alert: None,
         }
     }
-    pub fn on() -> CommandLight {
+}
+
+impl CommandLight {
+    pub fn on(self) -> CommandLight {
         CommandLight {
             on: Some(true),
-            ..CommandLight::empty()
+            ..self
         }
     }
-    pub fn off() -> CommandLight {
+    pub fn off(self) -> CommandLight {
         CommandLight {
             on: Some(false),
-            ..CommandLight::empty()
+            ..self
         }
     }
-    pub fn with_bri(&self, b: u8) -> CommandLight {
+    pub fn with_bri(self, b: u8) -> CommandLight {
         CommandLight {
             bri: Some(b),
-            ..*self
+            ..self
         }
     }
-    pub fn with_hue(&self, h: u16) -> CommandLight {
+    pub fn with_hue(self, h: u16) -> CommandLight {
         CommandLight {
             hue: Some(h),
-            ..*self
+            ..self
         }
     }
-    pub fn with_sat(&self, s: u8) -> CommandLight {
+    pub fn with_sat(self, s: u8) -> CommandLight {
         CommandLight {
             sat: Some(s),
-            ..*self
+            ..self
         }
     }
-    pub fn with_ct(&self, c: u16) -> CommandLight {
+    pub fn with_ct(self, c: u16) -> CommandLight {
         CommandLight {
             ct: Some(c),
-            ..*self
+            ..self
+        }
+    }
+    pub fn alert(self) -> CommandLight {
+        CommandLight {
+            alert: Some("select".into()),
+            ..self
         }
     }
 }
@@ -165,14 +177,14 @@ impl Bridge {
         Ok(lights)
     }
 
-    pub fn set_light_state(&self, light: usize, command: CommandLight) -> Result<Value> {
+    pub fn set_light_state(&self, light: usize, command:&CommandLight) -> Result<Value> {
         let url = format!(
             "http://{}/api/{}/lights/{}/state",
             self.ip,
             self.username.clone().unwrap(),
             light
         );
-        let body = ::serde_json::to_vec(&command)?;
+        let body = ::serde_json::to_vec(command)?;
         let client = reqwest::Client::new();
         let resp = client
             .put(&url[..])
