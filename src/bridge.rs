@@ -140,9 +140,9 @@ impl Bridge {
         }
         let obtain = PostApi { devicetype: devicetype.to_string() };
         let url = format!("http://{}/api", self.ip);
-        let client = reqwest::Client::new()?;
+        let client = reqwest::Client::new();
         let success: Success = self.parse(
-            client.post(&url[..])?.json(&obtain)?.send()?.json()?,
+            client.post(&url[..]).json(&obtain).send()?.json()?,
         )?;
         Ok(success.success.username)
     }
@@ -173,9 +173,9 @@ impl Bridge {
             light
         );
         let body = ::serde_json::to_vec(&command)?;
-        let client = reqwest::Client::new()?;
+        let client = reqwest::Client::new();
         let resp = client
-            .put(&url[..])?
+            .put(&url[..])
             .body(::reqwest::Body::from(body))
             .send()?
             .json()?;
