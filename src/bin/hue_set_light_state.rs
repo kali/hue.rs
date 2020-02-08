@@ -9,7 +9,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 4 {
         println!(
-            "usage : {:?} <username> <light_id>,<light_id>,... on|off|[bri]:[hue]:[sat]|[ct]MK:[bri]|[w]K:[bri]|[RR][GG][BB]:[bri] [transition_time]",
+            "usage : {:?} <username> <light_id>,<light_id>,... on|off|[bri]:[hue]:[sat]|[ct]MK:[bri]|[w]K:[bri]|[RR][GG][BB]:[bri]|[x,y]:[bri] [transition_time]",
             args[0]
         );
         return;
@@ -24,6 +24,7 @@ fn main() {
     let re_triplet = Regex::new("([0-9]{0,3}):([0-9]{0,5}):([0-9]{0,3})").unwrap();
     let re_mired = Regex::new("([0-9]{0,4})MK:([0-9]{0,5})").unwrap();
     let re_kelvin = Regex::new("([0-9]{4,4})K:([0-9]{0,5})").unwrap();
+    let re_xy = Regex::new("(0\\.[0-9]+),(0\\.[0-9]+):([0-9]{0,5})").unwrap();
     let re_rrggbb = Regex::new("([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})").unwrap();
     let mut parsed = match &command[..] {
         "on" => hueclient::bridge::CommandLight::default().on(),
@@ -68,6 +69,15 @@ fn main() {
             command.hue = Some((hsv.0 * 65535f64) as u16);
             command.sat = Some((hsv.1 * 255f64) as u8);
             command.bri = Some((hsv.2 * 255f64) as u8);
+            command
+        }
+        _ if re_xy.is_match(&command) => {
+            let caps = re_xy.captures(&command).unwrap();
+            let mut command = hueclient::bridge::CommandLight::default().on();
+            let x = caps.get(1).unwrap().as_str().parse::<f32>().unwrap();
+            let y = caps.get(2).unwrap().as_str().parse::<f32>().unwrap();
+            command.xy = Some((x,y));
+            command.bri = caps.get(3).and_then(|s| s.as_str().parse::<u8>().ok());
             command
         }
         _ => panic!("can not understand command {:?}", command),

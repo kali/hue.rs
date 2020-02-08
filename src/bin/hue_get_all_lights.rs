@@ -11,10 +11,10 @@ fn main() {
     let bridge = ::hueclient::bridge::Bridge::discover_required().with_user(args[1].to_string());
     match bridge.get_all_lights() {
         Ok(lights) => {
-            println!("id name                 on    bri   hue sat temp");
+            println!("id name                 on    bri   hue sat temp  x      y");
             for ref l in lights.iter() {
                 println!(
-                    "{:2} {:20} {:5} {:3} {:5} {:3} {:4}K",
+                    "{:2} {:20} {:5} {:3} {:5} {:3} {:4}K {:4} {:4}",
                     l.id,
                     l.light.name,
                     if l.light.state.on { "on" } else { "off" },
@@ -25,7 +25,9 @@ fn main() {
                         .state
                         .ct
                         .map(|k| if k != 0 { 1000000u32 / (k as u32) } else { 0 })
-                        .unwrap_or(0)
+                        .unwrap_or(0),
+                    l.light.state.xy.unwrap().0,
+                    l.light.state.xy.unwrap().1,
                 );
             }
         }

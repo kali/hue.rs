@@ -15,6 +15,7 @@ pub struct LightState {
     pub hue: u16,
     pub sat: u8,
     pub ct: Option<u16>,
+    pub xy: Option<(f32, f32)>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -45,6 +46,8 @@ pub struct CommandLight {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ct: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub xy: Option<(f32,f32)>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub transitiontime: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alert: Option<String>,
@@ -59,6 +62,7 @@ impl Default for CommandLight {
             sat: None,
             transitiontime: None,
             ct: None,
+            xy: None,
             alert: None,
         }
     }
@@ -98,6 +102,12 @@ impl CommandLight {
     pub fn with_ct(self, c: u16) -> CommandLight {
         CommandLight {
             ct: Some(c),
+            ..self
+        }
+    }
+    pub fn with_xy(self, x: f32, y: f32) -> CommandLight {
+        CommandLight {
+            xy: Some((x,y)),
             ..self
         }
     }
