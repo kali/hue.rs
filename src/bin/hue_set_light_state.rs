@@ -24,7 +24,7 @@ fn main() {
     let re_triplet = Regex::new("([0-9]{0,3}):([0-9]{0,5}):([0-9]{0,3})").unwrap();
     let re_mired = Regex::new("([0-9]{0,4})MK:([0-9]{0,5})").unwrap();
     let re_kelvin = Regex::new("([0-9]{4,4})K:([0-9]{0,5})").unwrap();
-    let re_xy = Regex::new("(0\\.[0-9]+),(0\\.[0-9]+):([0-9]{0,5})").unwrap();
+    let re_xy = Regex::new("(0\\.[0-9]+),(0\\.[0-9]+)(:([0-9]{0,5}))?").unwrap();
     let re_rrggbb = Regex::new("([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})").unwrap();
     let mut parsed = match &command[..] {
         "on" => hueclient::bridge::CommandLight::default().on(),
@@ -73,11 +73,14 @@ fn main() {
         }
         _ if re_xy.is_match(&command) => {
             let caps = re_xy.captures(&command).unwrap();
+            dbg!(&caps);
             let mut command = hueclient::bridge::CommandLight::default().on();
             let x = caps.get(1).unwrap().as_str().parse::<f32>().unwrap();
             let y = caps.get(2).unwrap().as_str().parse::<f32>().unwrap();
             command.xy = Some((x,y));
-            command.bri = caps.get(3).and_then(|s| s.as_str().parse::<u8>().ok());
+            if let Some(bri) = caps.get(4) {
+                command.bri = Some(bri.as_str().parse::<u8>().unwrap());
+            }
             command
         }
         _ => panic!("can not understand command {:?}", command),

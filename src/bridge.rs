@@ -1,12 +1,11 @@
-use std::str::FromStr;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use reqwest;
 use serde_json::Value;
 
 use disco;
 use Result;
-
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct LightState {
@@ -46,7 +45,7 @@ pub struct CommandLight {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ct: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub xy: Option<(f32,f32)>,
+    pub xy: Option<(f32, f32)>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transitiontime: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -107,7 +106,7 @@ impl CommandLight {
     }
     pub fn with_xy(self, x: f32, y: f32) -> CommandLight {
         CommandLight {
-            xy: Some((x,y)),
+            xy: Some((x, y)),
             ..self
         }
     }
@@ -123,16 +122,16 @@ impl CommandLight {
 pub struct Bridge {
     ip: String,
     username: Option<String>,
+    client: reqwest::Client,
 }
 
 impl Bridge {
     #[allow(dead_code)]
     pub fn discover() -> Option<Bridge> {
-        disco::discover_hue_bridge().ok().map(|i| {
-            Bridge {
-                ip: i,
-                username: None,
-            }
+        disco::discover_hue_bridge().ok().map(|i| Bridge {
+            ip: i,
+            username: None,
+            client: reqwest::Client::new(),
         })
     }
 
@@ -160,12 +159,12 @@ impl Bridge {
         struct Username {
             username: String,
         }
-        let obtain = PostApi { devicetype: devicetype.to_string() };
+        let obtain = PostApi {
+            devicetype: devicetype.to_string(),
+        };
         let url = format!("http://{}/api", self.ip);
-        let client = reqwest::Client::new();
-        let success: Success = self.parse(
-            client.post(&url[..]).json(&obtain).send()?.json()?,
-        )?;
+        let success: Success =
+            self.parse(self.client.post(&url[..]).json(&obtain).send()?.json()?)?;
         Ok(success.success.username)
     }
 
@@ -175,7 +174,7 @@ impl Bridge {
             self.ip,
             self.username.clone().unwrap()
         );
-        let resp: HashMap<String, Light> = self.parse(reqwest::get(&url[..])?.json()?)?;
+        let resp: HashMap<String, Light> = self.parse(self.client.get(&url[..]).send()?.json()?)?;
         let mut lights = vec![];
         for (k, v) in resp {
             let id: usize = usize::from_str(&k).or(Err(::ErrorKind::ProtocolError(
@@ -187,7 +186,7 @@ impl Bridge {
         Ok(lights)
     }
 
-    pub fn set_light_state(&self, light: usize, command:&CommandLight) -> Result<Value> {
+    pub fn set_light_state(&self, light: usize, command: &CommandLight) -> Result<Value> {
         let url = format!(
             "http://{}/api/{}/lights/{}/state",
             self.ip,
@@ -195,8 +194,8 @@ impl Bridge {
             light
         );
         let body = ::serde_json::to_vec(command)?;
-        let client = reqwest::Client::new();
-        let resp = client
+        let resp = self
+            .client
             .put(&url[..])
             .body(::reqwest::Body::from(body))
             .send()?
@@ -218,12 +217,12 @@ impl Bridge {
         let value = objects.remove(0);
         {
             let object = value.as_object().ok_or(::ErrorKind::ProtocolError(
-                "expected first item to be an object"
-                    .to_string(),
+                "expected first item to be an object".to_string(),
             ))?;
             if let Some(e) = object.get("error").and_then(|o| o.as_object()) {
                 let code: u64 = e.get("type").and_then(|s| s.as_u64()).unwrap_or(0);
-                let desc = e.get("description")
+                let desc = e
+                    .get("description")
                     .and_then(|s| s.as_str())
                     .unwrap_or("")
                     .to_string();
