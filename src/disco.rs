@@ -1,8 +1,9 @@
 use reqwest;
 use serde_json::*;
+use crate::*;
 
-pub fn discover_hue_bridge() -> ::Result<String> {
-    let objects: Vec<Map<String, Value>> = reqwest::get("https://www.meethue.com/api/nupnp")?
+pub fn discover_hue_bridge() -> HueResult<String> {
+    let objects: Vec<Map<String, Value>> = reqwest::blocking::get("https://www.meethue.com/api/nupnp")?
         .json()?;
 
     if objects.len() == 0 {

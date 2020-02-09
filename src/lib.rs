@@ -7,9 +7,10 @@ extern crate serde_derive;
 extern crate reqwest;
 
 error_chain! {
+    types  { HueError, HueErrorKind, HueResultExt, HueResult; }
     foreign_links {
-        Reqwest(::reqwest::Error);
-        SerdeJson(::serde_json::Error);
+        Reqwest(reqwest::Error);
+        SerdeJson(serde_json::Error);
     }
 
     errors {

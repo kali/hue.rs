@@ -4,8 +4,7 @@ use std::str::FromStr;
 use reqwest;
 use serde_json::Value;
 
-use disco;
-use Result;
+use crate::*;
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct LightState {
@@ -122,7 +121,7 @@ impl CommandLight {
 pub struct Bridge {
     ip: String,
     username: Option<String>,
-    client: reqwest::Client,
+    client: reqwest::blocking::Client,
 }
 
 impl Bridge {
@@ -131,7 +130,7 @@ impl Bridge {
         disco::discover_hue_bridge().ok().map(|i| Bridge {
             ip: i,
             username: None,
-            client: reqwest::Client::new(),
+            client: reqwest::blocking::Client::new(),
         })
     }
 
@@ -146,7 +145,7 @@ impl Bridge {
         }
     }
 
-    pub fn register_user(&self, devicetype: &str) -> Result<String> {
+    pub fn register_user(&self, devicetype: &str) -> HueResult<String> {
         #[derive(Serialize, Deserialize)]
         struct PostApi {
             devicetype: String,
@@ -168,7 +167,7 @@ impl Bridge {
         Ok(success.success.username)
     }
 
-    pub fn get_all_lights(&self) -> Result<Vec<IdentifiedLight>> {
+    pub fn get_all_lights(&self) -> HueResult<Vec<IdentifiedLight>> {
         let url = format!(
             "http://{}/api/{}/lights",
             self.ip,
@@ -177,7 +176,7 @@ impl Bridge {
         let resp: HashMap<String, Light> = self.parse(self.client.get(&url[..]).send()?.json()?)?;
         let mut lights = vec![];
         for (k, v) in resp {
-            let id: usize = usize::from_str(&k).or(Err(::ErrorKind::ProtocolError(
+            let id: usize = usize::from_str(&k).or(Err(HueErrorKind::ProtocolError(
                 "Light id should be a number".to_string(),
             )))?;
             lights.push(IdentifiedLight { id: id, light: v });
@@ -186,7 +185,7 @@ impl Bridge {
         Ok(lights)
     }
 
-    pub fn set_light_state(&self, light: usize, command: &CommandLight) -> Result<Value> {
+    pub fn set_light_state(&self, light: usize, command: &CommandLight) -> HueResult<Value> {
         let url = format!(
             "http://{}/api/{}/lights/{}/state",
             self.ip,
@@ -197,26 +196,26 @@ impl Bridge {
         let resp = self
             .client
             .put(&url[..])
-            .body(::reqwest::Body::from(body))
+            .body(::reqwest::blocking::Body::from(body))
             .send()?
             .json()?;
         self.parse(resp)
     }
 
-    fn parse<T: ::serde::de::DeserializeOwned>(&self, value: Value) -> Result<T> {
+    fn parse<T: ::serde::de::DeserializeOwned>(&self, value: Value) -> HueResult<T> {
         use serde_json::*;
         if !value.is_array() {
             return Ok(from_value(value)?);
         }
         let mut objects: Vec<Value> = from_value(value)?;
         if objects.len() == 0 {
-            Err(::ErrorKind::ProtocolError(
+            Err(HueErrorKind::ProtocolError(
                 "expected non-empty array".to_string(),
             ))?
         }
         let value = objects.remove(0);
         {
-            let object = value.as_object().ok_or(::ErrorKind::ProtocolError(
+            let object = value.as_object().ok_or(HueErrorKind::ProtocolError(
                 "expected first item to be an object".to_string(),
             ))?;
             if let Some(e) = object.get("error").and_then(|o| o.as_object()) {
@@ -226,7 +225,7 @@ impl Bridge {
                     .and_then(|s| s.as_str())
                     .unwrap_or("")
                     .to_string();
-                Err(::ErrorKind::BridgeError(code as usize, desc))?
+                Err(HueErrorKind::BridgeError(code as usize, desc))?
             }
         }
         Ok(from_value(value)?)

@@ -18,7 +18,7 @@ fn main() {
                     println!("{}", r);
                     break;
                 }
-                Err(hueclient::Error(hueclient::ErrorKind::BridgeError(code, _), _))
+                Err(hueclient::HueError(hueclient::HueErrorKind::BridgeError(code, _), _))
                     if code == 101 => {
                     println!("Push the bridge button");
                     std::thread::sleep(::std::time::Duration::from_secs(5));
