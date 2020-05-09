@@ -119,16 +119,24 @@ impl CommandLight {
 
 #[derive(Debug)]
 pub struct Bridge {
-    ip: String,
+    ip: std::net::IpAddr,
     username: Option<String>,
     client: reqwest::blocking::Client,
 }
 
 impl Bridge {
+    pub fn for_ip(ip: std::net::IpAddr) -> Bridge {
+        Bridge {
+            ip,
+            username: None,
+            client: reqwest::blocking::Client::new(),
+        }
+    }
+
     #[allow(dead_code)]
     pub fn discover() -> Option<Bridge> {
         disco::discover_hue_bridge().ok().map(|i| Bridge {
-            ip: i,
+            ip: i.parse().unwrap(),
             username: None,
             client: reqwest::blocking::Client::new(),
         })
