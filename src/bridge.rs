@@ -135,8 +135,8 @@ impl Bridge {
 
     #[allow(dead_code)]
     pub fn discover() -> Option<Bridge> {
-        disco::discover_hue_bridge().ok().map(|i| Bridge {
-            ip: i.parse().unwrap(),
+        disco::discover_hue_bridge().ok().map(|ip| Bridge {
+            ip,
             username: None,
             client: reqwest::blocking::Client::new(),
         })
