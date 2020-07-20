@@ -11,6 +11,8 @@ error_chain! {
     foreign_links {
         Reqwest(reqwest::Error);
         SerdeJson(serde_json::Error);
+        AddrParse(std::net::AddrParseError);
+        SSDP(ssdp_probe::SsdpProbeError);
     }
 
     errors {
@@ -19,5 +21,5 @@ error_chain! {
     }
 }
 
-mod disco;
 pub mod bridge;
+mod disco;
