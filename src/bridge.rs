@@ -9,9 +9,9 @@ use crate::*;
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct LightState {
     pub on: bool,
-    pub bri: u8,
-    pub hue: u16,
-    pub sat: u8,
+    pub bri: Option<u8>,
+    pub hue: Option<u16>,
+    pub sat: Option<u8>,
     pub ct: Option<u16>,
     pub xy: Option<(f32, f32)>,
 }
