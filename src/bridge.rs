@@ -120,8 +120,8 @@ impl CommandLight {
 
 #[derive(Debug)]
 pub struct Bridge {
-    ip: std::net::IpAddr,
-    username: Option<String>,
+    pub ip: std::net::IpAddr,
+    pub username: Option<String>,
     client: reqwest::blocking::Client,
 }
 
@@ -154,7 +154,7 @@ impl Bridge {
         }
     }
 
-    pub fn register_user(&self, devicetype: &str) -> Result<String, HueError> {
+    pub fn register_user(&mut self, devicetype: &str) -> Result<String, HueError> {
         #[derive(Serialize, Deserialize)]
         struct PostApi {
             devicetype: String,
@@ -173,6 +173,9 @@ impl Bridge {
         let url = format!("http://{}/api", self.ip);
         let success: Success =
             self.parse(self.client.post(&url[..]).json(&obtain).send()?.json()?)?;
+
+        self.username = Some(success.success.username.clone());
+
         Ok(success.success.username)
     }
 

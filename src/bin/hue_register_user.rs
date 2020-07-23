@@ -9,7 +9,7 @@ fn main() {
     if args.len() != 2 {
         println!("usage : {:?} <devicetype>", args[0]);
     } else {
-        let bridge = ::hueclient::bridge::Bridge::discover_required();
+        let mut bridge = ::hueclient::bridge::Bridge::discover_required();
         println!("posting user {:?} in {:?}", args[1], bridge);
         while true {
             let r = bridge.register_user(&args[1]);
