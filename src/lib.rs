@@ -16,6 +16,8 @@ pub enum HueError {
     BridgeError { code: usize, msg: String },
     #[error("A discovery error occurred: {}", msg)]
     DiscoveryError { msg: String },
+    #[error("This action requires an username to be registered")]
+    NoUsername,
 }
 
 pub mod bridge;

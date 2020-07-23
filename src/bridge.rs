@@ -180,7 +180,7 @@ impl Bridge {
         let url = format!(
             "http://{}/api/{}/lights",
             self.ip,
-            self.username.clone().unwrap()
+            self.username.as_ref().ok_or(HueError::NoUsername)?
         );
         let resp: HashMap<String, Light> = self.parse(self.client.get(&url[..]).send()?.json()?)?;
         let mut lights = vec![];
@@ -198,7 +198,7 @@ impl Bridge {
         let url = format!(
             "http://{}/api/{}/lights/{}/state",
             self.ip,
-            self.username.clone().unwrap(),
+            self.username.as_ref().ok_or(HueError::NoUsername)?,
             light
         );
         let body = ::serde_json::to_vec(command)?;
