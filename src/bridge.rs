@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use reqwest;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::*;
@@ -187,7 +188,7 @@ impl Bridge {
             let id: usize = usize::from_str(&k).or(Err(HueErrorKind::ProtocolError(
                 "Light id should be a number".to_string(),
             )))?;
-            lights.push(IdentifiedLight { id: id, light: v });
+            lights.push(IdentifiedLight { id, light: v });
         }
         lights.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(lights)
