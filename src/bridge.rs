@@ -154,7 +154,7 @@ impl Bridge {
         }
     }
 
-    pub fn register_user(&self, devicetype: &str) -> HueResult<String> {
+    pub fn register_user(&self, devicetype: &str) -> Result<String, HueError> {
         #[derive(Serialize, Deserialize)]
         struct PostApi {
             devicetype: String,
@@ -176,7 +176,7 @@ impl Bridge {
         Ok(success.success.username)
     }
 
-    pub fn get_all_lights(&self) -> HueResult<Vec<IdentifiedLight>> {
+    pub fn get_all_lights(&self) -> Result<Vec<IdentifiedLight>, HueError> {
         let url = format!(
             "http://{}/api/{}/lights",
             self.ip,
@@ -185,16 +185,16 @@ impl Bridge {
         let resp: HashMap<String, Light> = self.parse(self.client.get(&url[..]).send()?.json()?)?;
         let mut lights = vec![];
         for (k, v) in resp {
-            let id: usize = usize::from_str(&k).or(Err(HueErrorKind::ProtocolError(
-                "Light id should be a number".to_string(),
-            )))?;
+            let id: usize = usize::from_str(&k).or(Err(HueError::ProtocolError {
+                msg: "Light id should be a number".to_string(),
+            }))?;
             lights.push(IdentifiedLight { id, light: v });
         }
         lights.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(lights)
     }
 
-    pub fn set_light_state(&self, light: usize, command: &CommandLight) -> HueResult<Value> {
+    pub fn set_light_state(&self, light: usize, command: &CommandLight) -> Result<Value, HueError> {
         let url = format!(
             "http://{}/api/{}/lights/{}/state",
             self.ip,
@@ -211,22 +211,22 @@ impl Bridge {
         self.parse(resp)
     }
 
-    fn parse<T: ::serde::de::DeserializeOwned>(&self, value: Value) -> HueResult<T> {
+    fn parse<T: ::serde::de::DeserializeOwned>(&self, value: Value) -> Result<T, HueError> {
         use serde_json::*;
         if !value.is_array() {
             return Ok(from_value(value)?);
         }
         let mut objects: Vec<Value> = from_value(value)?;
         if objects.len() == 0 {
-            Err(HueErrorKind::ProtocolError(
-                "expected non-empty array".to_string(),
-            ))?
+            Err(HueError::ProtocolError {
+                msg: "expected non-empty array".to_string(),
+            })?
         }
         let value = objects.remove(0);
         {
-            let object = value.as_object().ok_or(HueErrorKind::ProtocolError(
-                "expected first item to be an object".to_string(),
-            ))?;
+            let object = value.as_object().ok_or(HueError::ProtocolError {
+                msg: "expected first item to be an object".to_string(),
+            })?;
             if let Some(e) = object.get("error").and_then(|o| o.as_object()) {
                 let code: u64 = e.get("type").and_then(|s| s.as_u64()).unwrap_or(0);
                 let desc = e
@@ -234,7 +234,10 @@ impl Bridge {
                     .and_then(|s| s.as_str())
                     .unwrap_or("")
                     .to_string();
-                Err(HueErrorKind::BridgeError(code as usize, desc))?
+                Err(HueError::BridgeError {
+                    code: code as usize,
+                    msg: desc,
+                })?
             }
         }
         Ok(from_value(value)?)

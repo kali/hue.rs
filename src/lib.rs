@@ -1,16 +1,21 @@
-error_chain::error_chain! {
-    types  { HueError, HueErrorKind, HueResultExt, HueResult; }
-    foreign_links {
-        Reqwest(reqwest::Error);
-        SerdeJson(serde_json::Error);
-        AddrParse(std::net::AddrParseError);
-        SSDP(ssdp_probe::SsdpProbeError);
-    }
+use thiserror::Error;
 
-    errors {
-        ProtocolError(msg: String)
-        BridgeError(code: usize, msg: String)
-    }
+#[derive(Error, Debug)]
+pub enum HueError {
+    #[error("An error occurred while performing an HTTP request")]
+    Reqwest(#[from] reqwest::Error),
+    #[error("An error occurred while manipulating JSON")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("An error occurred while parsing an address")]
+    AddrParse(#[from] std::net::AddrParseError),
+    #[error("An error occurred during SSDP discovery")]
+    SSDP(#[from] ssdp_probe::SsdpProbeError),
+    #[error("A protocol error occurred: {}", msg)]
+    ProtocolError { msg: String },
+    #[error("The bridge reported error code {}: {}", code, msg)]
+    BridgeError { code: usize, msg: String },
+    #[error("A discovery error occurred: {}", msg)]
+    DiscoveryError { msg: String },
 }
 
 pub mod bridge;

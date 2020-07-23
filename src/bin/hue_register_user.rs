@@ -1,4 +1,5 @@
 extern crate hueclient;
+use hueclient::HueError;
 use std::env;
 
 #[allow(while_true)]
@@ -18,8 +19,7 @@ fn main() {
                     println!("{}", r);
                     break;
                 }
-                Err(hueclient::HueError(hueclient::HueErrorKind::BridgeError(code, _), _))
-                    if code == 101 => {
+                Err(HueError::BridgeError { code, .. }) if code == 101 => {
                     println!("Push the bridge button");
                     std::thread::sleep(::std::time::Duration::from_secs(5));
                 }
