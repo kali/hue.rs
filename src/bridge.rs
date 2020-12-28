@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 use std::str::FromStr;
-
-use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -125,11 +123,11 @@ pub struct UnauthBridge {
 }
 
 impl UnauthBridge {
-    /// Consumes the bidge and return a new one with a configured username.
+    /// Consumes the bridge and returns a new one with a configured username.
     /// ### Example
     /// ```rust
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
-    ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
+    ///     .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
     /// ```
     pub fn with_user(self, username: impl Into<String>) -> Bridge {
         Bridge {
@@ -191,7 +189,7 @@ impl Bridge {
     /// ```rust
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4]);
     /// ```
-    pub fn for_ip(ip: impl Into<std::net::IpAddr>) -> UnauthBridge {
+    pub fn for_ip(ip: impl std::net::ToSocketAddrs) -> UnauthBridge {
         UnauthBridge {
             ip: ip.into(),
             client: reqwest::blocking::Client::new(),
