@@ -14,7 +14,7 @@ fn main() {
         );
         return;
     }
-    let bridge = ::hueclient::bridge::Bridge::discover_required().with_user(args[1].to_string());
+    let bridge = ::hueclient::Bridge::discover_required().with_user(args[1].to_string());
     let ref lights: Vec<usize> = args[2]
         .split(",")
         .map(|s| s.parse::<usize>().unwrap())
@@ -27,11 +27,11 @@ fn main() {
     let re_xy = Regex::new("(0\\.[0-9]+),(0\\.[0-9]+)(:([0-9]{0,5}))?").unwrap();
     let re_rrggbb = Regex::new("([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})").unwrap();
     let mut parsed = match &command[..] {
-        "on" => hueclient::bridge::CommandLight::default().on(),
-        "off" => hueclient::bridge::CommandLight::default().off(),
+        "on" => hueclient::CommandLight::default().on(),
+        "off" => hueclient::CommandLight::default().off(),
         _ if re_triplet.is_match(&command) => {
             let caps = re_triplet.captures(&command).unwrap();
-            let mut command = hueclient::bridge::CommandLight::default().on();
+            let mut command = hueclient::CommandLight::default().on();
             command.bri = caps.get(1).and_then(|s| s.as_str().parse::<u8>().ok());
             command.hue = caps.get(2).and_then(|s| s.as_str().parse::<u16>().ok());
             command.sat = caps.get(3).and_then(|s| s.as_str().parse::<u8>().ok());
@@ -39,7 +39,7 @@ fn main() {
         }
         _ if re_mired.is_match(&command) => {
             let caps = re_mired.captures(&command).unwrap();
-            let mut command = hueclient::bridge::CommandLight::default().on();
+            let mut command = hueclient::CommandLight::default().on();
             command.ct = caps.get(1).and_then(|s| s.as_str().parse::<u16>().ok());
             command.bri = caps.get(2).and_then(|s| s.as_str().parse::<u8>().ok());
             command.sat = Some(254);
@@ -47,7 +47,7 @@ fn main() {
         }
         _ if re_kelvin.is_match(&command) => {
             let caps = re_kelvin.captures(&command).unwrap();
-            let mut command = hueclient::bridge::CommandLight::default().on();
+            let mut command = hueclient::CommandLight::default().on();
             command.ct = caps.get(1).and_then(|s| {
                 s.as_str().parse::<u32>().ok().map(
                     |k| (1000000u32 / k) as u16,
@@ -59,7 +59,7 @@ fn main() {
         }
         _ if re_rrggbb.is_match(&command) => {
             let caps = re_rrggbb.captures(&command).unwrap();
-            let mut command = hueclient::bridge::CommandLight::default().on();
+            let mut command = hueclient::CommandLight::default().on();
             let rgb: Vec<u8> = [caps.get(1), caps.get(2), caps.get(3)]
                 .iter()
                 .map(|s| u8::from_str_radix(s.unwrap().as_str(), 16).unwrap())
@@ -74,7 +74,7 @@ fn main() {
         _ if re_xy.is_match(&command) => {
             let caps = re_xy.captures(&command).unwrap();
             dbg!(&caps);
-            let mut command = hueclient::bridge::CommandLight::default().on();
+            let mut command = hueclient::CommandLight::default().on();
             let x = caps.get(1).unwrap().as_str().parse::<f32>().unwrap();
             let y = caps.get(2).unwrap().as_str().parse::<f32>().unwrap();
             command.xy = Some((x,y));

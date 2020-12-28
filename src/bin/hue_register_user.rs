@@ -9,14 +9,14 @@ fn main() {
     if args.len() != 2 {
         println!("usage : {:?} <devicetype>", args[0]);
     } else {
-        let mut bridge = ::hueclient::bridge::Bridge::discover_required();
+        let bridge = ::hueclient::Bridge::discover_required();
         println!("posting user {:?} in {:?}", args[1], bridge);
-        while true {
-            let r = bridge.register_user(&args[1]);
+        loop {
+            let r = bridge.clone().register_user(&args[1]);
             match r {
                 Ok(r) => {
                     eprint!("done: ");
-                    println!("{}", r);
+                    println!("{}", r.username);
                     break;
                 }
                 Err(HueError::BridgeError { code, .. }) if code == 101 => {

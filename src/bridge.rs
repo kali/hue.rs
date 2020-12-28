@@ -5,8 +5,6 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::*;
-
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct LightState {
     pub on: bool,
@@ -118,52 +116,44 @@ impl CommandLight {
     }
 }
 
-#[derive(Debug)]
-pub struct Bridge {
+/// An unauthenticated bridge is a bridge that has not
+#[derive(Debug, Clone)]
+pub struct UnauthBridge {
+    /// The IP-address of the bridge.
     pub ip: std::net::IpAddr,
-    pub username: Option<String>,
-    client: reqwest::blocking::Client,
+    pub(self) client: reqwest::blocking::Client,
 }
 
-impl Bridge {
-    pub fn for_ip(ip: std::net::IpAddr) -> Bridge {
+impl UnauthBridge {
+    /// Consumes the bidge and return a new one with a configured username.
+    /// ### Example
+    /// ```rust
+    /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
+    ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
+    /// ```
+    pub fn with_user(self, username: impl Into<String>) -> Bridge {
         Bridge {
-            ip,
-            username: None,
-            client: reqwest::blocking::Client::new(),
+            ip: self.ip,
+            username: username.into(),
+            client: self.client,
         }
     }
 
-    #[allow(dead_code)]
-    pub fn discover() -> Option<Bridge> {
-        disco::discover_hue_bridge().ok().map(|ip| Bridge {
-            ip,
-            username: None,
-            client: reqwest::blocking::Client::new(),
-        })
-    }
-
-    pub fn discover_required() -> Bridge {
-        Bridge::discover().unwrap_or_else(|| panic!("No bridge found!"))
-    }
-
-    pub fn with_user(self, username: String) -> Bridge {
-        Bridge {
-            username: Some(username),
-            ..self
-        }
-    }
-
-    pub fn register_user(&mut self, devicetype: &str) -> Result<String, HueError> {
-        #[derive(Serialize, Deserialize)]
+    /// This function registers a new user at the provided brige, using `devicetype` as an
+    /// identifier for that user. It returns an error if the button of the bridge was not pressed
+    /// shortly before running this function.
+    /// ### Example
+    /// ```rust
+    /// let mut bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4]);
+    /// let password = bridge.register_user("mylaptop").unwrap();
+    /// // now this password can be stored and reused
+    /// ```
+    pub fn register_user(self, devicetype: &str) -> crate::Result<Bridge> {
+        #[derive(Serialize)]
         struct PostApi {
             devicetype: String,
         }
-        #[derive(Serialize, Deserialize)]
-        struct Success {
-            success: Username,
-        }
-        #[derive(Serialize, Deserialize)]
+        #[derive(Debug, Deserialize)]
         struct Username {
             username: String,
         }
@@ -171,78 +161,193 @@ impl Bridge {
             devicetype: devicetype.to_string(),
         };
         let url = format!("http://{}/api", self.ip);
-        let success: Success =
-            self.parse(self.client.post(&url[..]).json(&obtain).send()?.json()?)?;
+        let resp: BridgeResponse<SuccessResponse<Username>> =
+            self.client.post(&url).json(&obtain).send()?.json()?;
+        let resp = resp.get()?;
 
-        self.username = Some(success.success.username.clone());
+        Ok(Bridge {
+            ip: self.ip,
+            username: resp.success.username,
+            client: self.client,
+        })
+    }
+}
 
-        Ok(success.success.username)
+/// The bridge is the central access point of the lamps is a Hue setup, and also the central access
+/// point of this library.
+#[derive(Debug)]
+pub struct Bridge {
+    /// The IP-address of the bridge.
+    pub ip: std::net::IpAddr,
+    /// This is the username of the currently logged in user.
+    pub username: String,
+    pub(self) client: reqwest::blocking::Client,
+}
+
+impl Bridge {
+    /// Create a bridge at this IP. If you know the IP-address, this is the fastest option. Note
+    /// that this function does not validate whether a bridge is really present at the IP-address.
+    /// ### Example
+    /// ```rust
+    /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4]);
+    /// ```
+    pub fn for_ip(ip: impl Into<std::net::IpAddr>) -> UnauthBridge {
+        UnauthBridge {
+            ip: ip.into(),
+            client: reqwest::blocking::Client::new(),
+        }
     }
 
-    pub fn get_all_lights(&self) -> Result<Vec<IdentifiedLight>, HueError> {
-        let url = format!(
-            "http://{}/api/{}/lights",
-            self.ip,
-            self.username.as_ref().ok_or(HueError::NoUsername)?
-        );
-        let resp: HashMap<String, Light> = self.parse(self.client.get(&url[..]).send()?.json()?)?;
+    /// Scans the current network for Bridges, and if there is at least one, returns the first one
+    /// that was found.
+    /// ### Example
+    /// ```rust
+    /// let maybe_bridge = hueclient::Bridge::discover();
+    /// ```
+    pub fn discover() -> Option<UnauthBridge> {
+        crate::disco::discover_hue_bridge()
+            .ok()
+            .map(|ip| UnauthBridge {
+                ip,
+                client: reqwest::blocking::Client::new(),
+            })
+    }
+
+    /// A convience wrapper around `Bridge::disover`, but panics if there is no bridge present.
+    /// ### Example
+    /// ```rust
+    /// let brige = hueclient::Bridge::discover_required();
+    /// ```
+    /// ### Panics
+    /// This function panics if there is no brige present.
+    pub fn discover_required() -> UnauthBridge {
+        Self::discover().expect("No bridge found!")
+    }
+
+    /// Consumes the bidge and return a new one with a configured username.
+    /// ### Example
+    /// ```rust
+    /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
+    ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
+    /// ```
+    pub fn with_user(self, username: impl Into<String>) -> Bridge {
+        Bridge {
+            ip: self.ip,
+            username: username.into(),
+            client: self.client,
+        }
+    }
+
+    /// This function registers a new user at the provided brige, using `devicetype` as an
+    /// identifier for that user. It returns an error if the button of the bridge was not pressed
+    /// shortly before running this function.
+    /// ### Example
+    /// ```rust
+    /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
+    ///     .bridge.register_user("mylaptop")
+    ///     .unwrap();
+    /// // now this password can be stored and reused
+    /// println!("the password was {}", bridge.password);
+    /// ```
+    pub fn register_user(self, devicetype: &str) -> crate::Result<Bridge> {
+        #[derive(Serialize)]
+        struct PostApi {
+            devicetype: String,
+        }
+        #[derive(Debug, Deserialize)]
+        struct Username {
+            username: String,
+        }
+        let obtain = PostApi {
+            devicetype: devicetype.to_string(),
+        };
+        let url = format!("http://{}/api", self.ip);
+        let resp: BridgeResponse<SuccessResponse<Username>> =
+            self.client.post(&url).json(&obtain).send()?.json()?;
+        let resp = resp.get()?;
+
+        Ok(Bridge {
+            ip: self.ip,
+            username: resp.success.username,
+            client: self.client,
+        })
+    }
+
+    /// Returns a vector of all lights that are registered at this `Bridge`, sorted by their id's.
+    /// This function returns an error if `bridge.username` is `None`.
+    /// ### Example
+    /// ```rust
+    /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
+    ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
+    /// for light in &bridge.get_all_lights().unwrap() {
+    ///     println!("{:?}", light);
+    /// }
+    /// ```
+    pub fn get_all_lights(&self) -> crate::Result<Vec<IdentifiedLight>> {
+        let url = format!("http://{}/api/{}/lights", self.ip, self.username);
+        type Resp = BridgeResponse<HashMap<String, Light>>;
+        let resp: Resp = self.client.get(&url).send()?.json()?;
         let mut lights = vec![];
-        for (k, v) in resp {
-            let id: usize = usize::from_str(&k).or(Err(HueError::ProtocolError {
-                msg: "Light id should be a number".to_string(),
-            }))?;
-            lights.push(IdentifiedLight { id, light: v });
+        for (k, light) in resp.get()? {
+            let id = usize::from_str(&k)
+                .map_err(|_| crate::HueError::protocol_err("Light id should be a number"))?;
+            lights.push(IdentifiedLight { id, light });
         }
         lights.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(lights)
     }
 
-    pub fn set_light_state(&self, light: usize, command: &CommandLight) -> Result<Value, HueError> {
+    pub fn set_light_state(&self, light: usize, command: &CommandLight) -> crate::Result<Value> {
         let url = format!(
             "http://{}/api/{}/lights/{}/state",
-            self.ip,
-            self.username.as_ref().ok_or(HueError::NoUsername)?,
-            light
+            self.ip, self.username, light
         );
-        let body = ::serde_json::to_vec(command)?;
-        let resp = self
-            .client
-            .put(&url[..])
-            .body(::reqwest::blocking::Body::from(body))
-            .send()?
-            .json()?;
-        self.parse(resp)
+        let resp: BridgeResponse<Value> =
+            self.client.put(&url).json(command).send()?.json()?;
+        resp.get()
     }
+}
+#[derive(Debug, serde::Deserialize)]
+#[serde(untagged)]
+enum BridgeResponse<T> {
+    Element(T),
+    List(Vec<T>),
+    Errors(Vec<BridgeError>),
+}
 
-    fn parse<T: ::serde::de::DeserializeOwned>(&self, value: Value) -> Result<T, HueError> {
-        use serde_json::*;
-        if !value.is_array() {
-            return Ok(from_value(value)?);
-        }
-        let mut objects: Vec<Value> = from_value(value)?;
-        if objects.len() == 0 {
-            Err(HueError::ProtocolError {
-                msg: "expected non-empty array".to_string(),
-            })?
-        }
-        let value = objects.remove(0);
-        {
-            let object = value.as_object().ok_or(HueError::ProtocolError {
-                msg: "expected first item to be an object".to_string(),
-            })?;
-            if let Some(e) = object.get("error").and_then(|o| o.as_object()) {
-                let code: u64 = e.get("type").and_then(|s| s.as_u64()).unwrap_or(0);
-                let desc = e
-                    .get("description")
-                    .and_then(|s| s.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                Err(HueError::BridgeError {
-                    code: code as usize,
-                    msg: desc,
-                })?
+impl<T> BridgeResponse<T> {
+    fn get(self) -> crate::Result<T> {
+        match self {
+            BridgeResponse::Element(t) => Ok(t),
+            BridgeResponse::List(mut ts) => ts
+                .pop()
+                .ok_or_else(|| crate::HueError::protocol_err("expected non-empty array")),
+            BridgeResponse::Errors(mut es) => {
+                // it is safe to unwrap here, since any empty lists will be treated as the
+                // `BridgeResponse::List` case.
+                let BridgeError { error } = es.pop().unwrap();
+                Err(crate::HueError::BridgeError {
+                    code: error.r#type,
+                    msg: error.description,
+                })
             }
         }
-        Ok(from_value(value)?)
     }
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct BridgeError {
+    error: BridgeErrorInner,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct BridgeErrorInner {
+    address: String,
+    description: String,
+    r#type: usize,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct SuccessResponse<T> {
+    success: T,
 }

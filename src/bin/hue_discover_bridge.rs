@@ -1,5 +1,5 @@
 extern crate hueclient;
-use hueclient::bridge::Bridge;
+use hueclient::Bridge;
 
 #[allow(dead_code)]
 fn main() {
