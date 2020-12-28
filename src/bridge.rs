@@ -189,7 +189,7 @@ impl Bridge {
     /// ```rust
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4]);
     /// ```
-    pub fn for_ip(ip: impl std::net::ToSocketAddrs) -> UnauthBridge {
+    pub fn for_ip(ip: impl Into<std::net::IpAddr>) -> UnauthBridge {
         UnauthBridge {
             ip: ip.into(),
             client: reqwest::blocking::Client::new(),

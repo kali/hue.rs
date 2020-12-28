@@ -1,5 +1,4 @@
 use crate::{HueError, HueError::DiscoveryError};
-use reqwest;
 use serde_json::{Map, Value};
 use std::net::IpAddr;
 
