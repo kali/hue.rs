@@ -3,6 +3,30 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct GroupState {
+    pub all_on: bool,
+    pub any_on: bool
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Group {
+    pub name: String,
+    pub lights: Vec<String>,
+    pub sensors: Vec<String>,
+    pub r#type: String,
+    pub state: GroupState,
+    pub recycle: bool,
+    pub action: LightState,
+}
+
+#[derive(Debug, Clone)]
+pub struct IdentifiedGroup {
+    pub id: usize,
+    pub group: Group,
+}
+
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct LightState {
     pub on: bool,
@@ -294,6 +318,22 @@ impl Bridge {
         lights.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(lights)
     }
+
+    pub fn get_all_groups(&self) -> crate::Result<Vec<IdentifiedGroup>> {
+        let url = format!("http://{}/api/{}/groups", self.ip, self.username);
+        println!("{}", url);
+        type Resp = BridgeResponse<HashMap<String, Group>>;
+        let resp: Resp = self.client.get(&url).send()?.json()?;
+        let mut groups = vec![];
+        for (k, group) in resp.get()? {
+            let id = usize::from_str(&k)
+                .map_err(|_| crate::HueError::protocol_err("Group id should be a number"))?;
+            groups.push(IdentifiedGroup { id, group });
+        }
+        groups.sort_by(|a, b| a.id.cmp(&b.id));
+        Ok(groups)
+    }
+
 
     pub fn set_light_state(&self, light: usize, command: &CommandLight) -> crate::Result<Value> {
         let url = format!(
