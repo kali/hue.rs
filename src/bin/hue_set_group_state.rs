@@ -22,7 +22,7 @@ fn main() {
 
     println!("groups: {:?}", groups);
     for l in groups.iter() {
-        println!("{:?}", bridge.set_light_state(*l, &parsed));
+        println!("{:?}", bridge.set_group_state(*l, &parsed));
         std::thread::sleep(::std::time::Duration::from_millis(50))
     }
 }
