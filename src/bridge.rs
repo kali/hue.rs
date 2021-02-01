@@ -53,6 +53,23 @@ pub struct IdentifiedLight {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Scene {
+    pub name: String,
+    pub r#type: String,
+    pub lights: Vec<String>,
+    pub owner: String,
+    pub recycle: bool,
+    pub locked: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct IdentifiedScene {
+    pub id: String,
+    pub scene: Scene,
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandLight {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub on: Option<bool>,
@@ -70,6 +87,8 @@ pub struct CommandLight {
     pub transitiontime: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alert: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scene: Option<String>,
 }
 
 impl Default for CommandLight {
@@ -83,6 +102,7 @@ impl Default for CommandLight {
             ct: None,
             xy: None,
             alert: None,
+            scene: None,
         }
     }
 }
@@ -133,6 +153,12 @@ impl CommandLight {
     pub fn alert(self) -> CommandLight {
         CommandLight {
             alert: Some("select".into()),
+            ..self
+        }
+    }
+    pub fn scene(self, s: String) -> CommandLight {
+        CommandLight {
+            scene: Some(s),
             ..self
         }
     }
@@ -319,6 +345,16 @@ impl Bridge {
         Ok(lights)
     }
 
+    /// Returns a vector of all groups that are registered at this `Bridge`, sorted by their id's.
+    /// This function returns an error if `bridge.username` is `None`.
+    /// ### Example
+    /// ```rust
+    /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
+    ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
+    /// for group in &bridge.get_all_groups().unwrap() {
+    ///     println!("{:?}", group);
+    /// }
+    /// ``
     pub fn get_all_groups(&self) -> crate::Result<Vec<IdentifiedGroup>> {
         let url = format!("http://{}/api/{}/groups", self.ip, self.username);
         println!("{}", url);
@@ -334,6 +370,49 @@ impl Bridge {
         Ok(groups)
     }
 
+    /// Returns a vector of all scenes that are registered at this `Bridge`, sorted by their id's.
+    /// This function returns an error if `bridge.username` is `None`.
+    /// ### Example
+    /// ```rust
+    /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
+    ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
+    /// for scene in &bridge.get_all_scenes().unwrap() {
+    ///     println!("{:?}", scene);
+    /// }
+    /// ``
+    pub fn get_all_scenes(&self) -> crate::Result<Vec<IdentifiedScene>> {
+        let url = format!("http://{}/api/{}/scenes", self.ip, self.username);
+        println!("{}", url);
+        type Resp = BridgeResponse<HashMap<String, Scene>>;
+        let resp: Resp = self.client.get(&url).send()?.json()?;
+        let mut scenes = vec![];
+        for (k, scene) in resp.get()? {
+            scenes.push(IdentifiedScene { id:k, scene:scene });
+        }
+        scenes.sort_by(|a, b| a.id.cmp(&b.id));
+        Ok(scenes)
+    }
+
+    pub fn set_scene(&self, scene: String) -> crate::Result<Value> {
+        let url = format!(
+            "http://{}/api/{}/groups/0/action",
+            self.ip, self.username
+        );
+        let command = CommandLight::default().scene(scene);
+        let resp: BridgeResponse<Value> =
+            self.client.put(&url).json(&command).send()?.json()?;
+        resp.get()
+    }
+
+    pub fn set_group_state(&self, group: usize, command: &CommandLight) -> crate::Result<Value> {
+        let url = format!(
+            "http://{}/api/{}/groups/{}/action",
+            self.ip, self.username, group
+        );
+        let resp: BridgeResponse<Value> =
+            self.client.put(&url).json(command).send()?.json()?;
+        resp.get()
+    }
 
     pub fn set_light_state(&self, light: usize, command: &CommandLight) -> crate::Result<Value> {
         let url = format!(
