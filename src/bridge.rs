@@ -352,7 +352,7 @@ impl Bridge {
     /// for group in &bridge.get_all_groups().unwrap() {
     ///     println!("{:?}", group);
     /// }
-    /// ``
+    /// ```
     pub fn get_all_groups(&self) -> crate::Result<Vec<IdentifiedGroup>> {
         let url = format!("http://{}/api/{}/groups", self.ip, self.username);
         println!("{}", url);
@@ -377,7 +377,7 @@ impl Bridge {
     /// for scene in &bridge.get_all_scenes().unwrap() {
     ///     println!("{:?}", scene);
     /// }
-    /// ``
+    /// ```
     pub fn get_all_scenes(&self) -> crate::Result<Vec<IdentifiedScene>> {
         let url = format!("http://{}/api/{}/scenes", self.ip, self.username);
         println!("{}", url);
