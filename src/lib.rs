@@ -77,5 +77,7 @@ pub type Result<T> = std::result::Result<T, HueError>;
 
 mod bridge;
 mod disco;
+mod command_parser;
 
 pub use bridge::*;
+pub use command_parser::*;
