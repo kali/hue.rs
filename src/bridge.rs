@@ -1,13 +1,12 @@
-use std::collections::HashMap;
-use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
+use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct GroupState {
     pub all_on: bool,
-    pub any_on: bool
+    pub any_on: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,7 +66,6 @@ pub struct IdentifiedScene {
     pub id: String,
     pub scene: Scene,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandLight {
@@ -387,20 +385,19 @@ impl Bridge {
         let resp: Resp = self.client.get(&url).send()?.json()?;
         let mut scenes = vec![];
         for (k, scene) in resp.get()? {
-            scenes.push(IdentifiedScene { id:k, scene:scene });
+            scenes.push(IdentifiedScene {
+                id: k,
+                scene: scene,
+            });
         }
         scenes.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(scenes)
     }
 
     pub fn set_scene(&self, scene: String) -> crate::Result<Value> {
-        let url = format!(
-            "http://{}/api/{}/groups/0/action",
-            self.ip, self.username
-        );
+        let url = format!("http://{}/api/{}/groups/0/action", self.ip, self.username);
         let command = CommandLight::default().scene(scene);
-        let resp: BridgeResponse<Value> =
-            self.client.put(&url).json(&command).send()?.json()?;
+        let resp: BridgeResponse<Value> = self.client.put(&url).json(&command).send()?.json()?;
         resp.get()
     }
 
@@ -409,8 +406,7 @@ impl Bridge {
             "http://{}/api/{}/groups/{}/action",
             self.ip, self.username, group
         );
-        let resp: BridgeResponse<Value> =
-            self.client.put(&url).json(command).send()?.json()?;
+        let resp: BridgeResponse<Value> = self.client.put(&url).json(command).send()?.json()?;
         resp.get()
     }
 
@@ -419,8 +415,7 @@ impl Bridge {
             "http://{}/api/{}/lights/{}/state",
             self.ip, self.username, light
         );
-        let resp: BridgeResponse<Value> =
-            self.client.put(&url).json(command).send()?.json()?;
+        let resp: BridgeResponse<Value> = self.client.put(&url).json(command).send()?.json()?;
         resp.get()
     }
 }

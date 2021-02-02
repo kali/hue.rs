@@ -17,13 +17,47 @@ fn main() {
                     "{:2} {:20} {:5} {:3} {:5} {:3} {:4}K {:4} {:4}",
                     l.id,
                     l.group.name,
-                    if l.group.state.all_on { "all on" } else if l.group.state.any_on { "some on"} else { "all off" },
-                    if l.group.action.bri.is_some() {l.group.action.bri.unwrap()} else {0},
-                    if l.group.action.hue.is_some() {l.group.action.hue.unwrap()} else {0},
-                    if l.group.action.sat.is_some() {l.group.action.sat.unwrap()} else {0},
-                    if l.group.action.ct.is_some() {l.group.action.ct.map(|k| if k != 0 { 1000000u32 / (k as u32) } else { 0 }).unwrap()} else {0},
-                    if l.group.action.xy.is_some() {l.group.action.xy.unwrap().0} else {0.0},
-                    if l.group.action.xy.is_some() {l.group.action.xy.unwrap().1} else {0.0},
+                    if l.group.state.all_on {
+                        "all on"
+                    } else if l.group.state.any_on {
+                        "some on"
+                    } else {
+                        "all off"
+                    },
+                    if l.group.action.bri.is_some() {
+                        l.group.action.bri.unwrap()
+                    } else {
+                        0
+                    },
+                    if l.group.action.hue.is_some() {
+                        l.group.action.hue.unwrap()
+                    } else {
+                        0
+                    },
+                    if l.group.action.sat.is_some() {
+                        l.group.action.sat.unwrap()
+                    } else {
+                        0
+                    },
+                    if l.group.action.ct.is_some() {
+                        l.group
+                            .action
+                            .ct
+                            .map(|k| if k != 0 { 1000000u32 / (k as u32) } else { 0 })
+                            .unwrap()
+                    } else {
+                        0
+                    },
+                    if l.group.action.xy.is_some() {
+                        l.group.action.xy.unwrap().0
+                    } else {
+                        0.0
+                    },
+                    if l.group.action.xy.is_some() {
+                        l.group.action.xy.unwrap().1
+                    } else {
+                        0.0
+                    },
                 );
             }
         }

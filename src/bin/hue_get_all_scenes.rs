@@ -13,11 +13,7 @@ fn main() {
         Ok(scenes) => {
             println!("id name");
             for ref l in scenes.iter() {
-                println!(
-                    "{:2} {:40}",
-                    l.id,
-                    l.scene.name,
-                );
+                println!("{:2} {:40}", l.id, l.scene.name,);
             }
         }
         Err(err) => {

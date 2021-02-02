@@ -1,4 +1,3 @@
-
 use crate::CommandLight;
 use regex::Regex;
 
@@ -33,9 +32,10 @@ pub fn parse_command(args: Vec<String>) -> CommandLight {
             let caps = re_kelvin.captures(&command).unwrap();
             let mut command = CommandLight::default().on();
             command.ct = caps.get(1).and_then(|s| {
-                s.as_str().parse::<u32>().ok().map(
-                    |k| (1000000u32 / k) as u16,
-                )
+                s.as_str()
+                    .parse::<u32>()
+                    .ok()
+                    .map(|k| (1000000u32 / k) as u16)
             });
             command.bri = caps.get(2).and_then(|s| s.as_str().parse::<u8>().ok());
             command.sat = Some(254);
@@ -61,7 +61,7 @@ pub fn parse_command(args: Vec<String>) -> CommandLight {
             let mut command = CommandLight::default().on();
             let x = caps.get(1).unwrap().as_str().parse::<f32>().unwrap();
             let y = caps.get(2).unwrap().as_str().parse::<f32>().unwrap();
-            command.xy = Some((x,y));
+            command.xy = Some((x, y));
             if let Some(bri) = caps.get(4) {
                 command.bri = Some(bri.as_str().parse::<u8>().unwrap());
             }
@@ -74,7 +74,6 @@ pub fn parse_command(args: Vec<String>) -> CommandLight {
     }
     parsed
 }
-
 
 fn rgb_to_hsv(r: u8, g: u8, b: u8) -> (f64, f64, f64) {
     let r = r as f64 / 255f64;
@@ -98,5 +97,3 @@ fn rgb_to_hsv(r: u8, g: u8, b: u8) -> (f64, f64, f64) {
         (h / 6f64, s, max)
     }
 }
-
-
