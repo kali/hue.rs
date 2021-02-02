@@ -3,25 +3,25 @@
 //! # Examples
 //! A short overview of the most common use cases of this library.
 //! ### Initial Setup
-//! ```rust
+//! ```no_run
 //! let bridge = hueclient::Bridge::discover_required()
 //!     .register_user("mycomputer") // Press the bridge before running this
 //!     .unwrap();
 //! println!("the username was {}", bridge.username); // handy for later
 //! ```
 //! ### Second run
-//! ```rust
+//! ```no_run
 //! const USERNAME: &str = "the username that was generated in the previous example";
 //! let bridge = hueclient::Bridge::discover_required()
 //!    .with_user(USERNAME);
 //! ```
 //! ### Good night
-//! ```rust
+//! ```no_run
 //! # const USERNAME: &str = "the username that was generated in the previous example";
 //! # let bridge = hueclient::Bridge::discover_required()
 //! #   .with_user(USERNAME);
-//! let cmd = hueclient::light::LightCommand::new().off();
-//! for light in &bridge.lights().unwrap() {
+//! let cmd = hueclient::CommandLight::default().off();
+//! for light in &bridge.get_all_lights().unwrap() {
 //!     bridge.set_light_state(light.id, &cmd).unwrap();
 //! }
 //! ```

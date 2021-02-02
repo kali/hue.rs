@@ -173,7 +173,7 @@ pub struct UnauthBridge {
 impl UnauthBridge {
     /// Consumes the bridge and returns a new one with a configured username.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///     .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
     /// ```
@@ -189,7 +189,7 @@ impl UnauthBridge {
     /// identifier for that user. It returns an error if the button of the bridge was not pressed
     /// shortly before running this function.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4]);
     /// let password = bridge.register_user("mylaptop").unwrap();
     /// // now this password can be stored and reused
@@ -234,7 +234,7 @@ impl Bridge {
     /// Create a bridge at this IP. If you know the IP-address, this is the fastest option. Note
     /// that this function does not validate whether a bridge is really present at the IP-address.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4]);
     /// ```
     pub fn for_ip(ip: impl Into<std::net::IpAddr>) -> UnauthBridge {
@@ -247,7 +247,7 @@ impl Bridge {
     /// Scans the current network for Bridges, and if there is at least one, returns the first one
     /// that was found.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let maybe_bridge = hueclient::Bridge::discover();
     /// ```
     pub fn discover() -> Option<UnauthBridge> {
@@ -261,7 +261,7 @@ impl Bridge {
 
     /// A convience wrapper around `Bridge::disover`, but panics if there is no bridge present.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let brige = hueclient::Bridge::discover_required();
     /// ```
     /// ### Panics
@@ -272,7 +272,7 @@ impl Bridge {
 
     /// Consumes the bidge and return a new one with a configured username.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
     /// ```
@@ -288,12 +288,12 @@ impl Bridge {
     /// identifier for that user. It returns an error if the button of the bridge was not pressed
     /// shortly before running this function.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
-    ///     .bridge.register_user("mylaptop")
+    ///     .register_user("mylaptop")
     ///     .unwrap();
-    /// // now this password can be stored and reused
-    /// println!("the password was {}", bridge.password);
+    /// // now this username d can be stored and reused
+    /// println!("the password was {}", bridge.username);
     /// ```
     pub fn register_user(self, devicetype: &str) -> crate::Result<Bridge> {
         #[derive(Serialize)]
@@ -322,7 +322,7 @@ impl Bridge {
     /// Returns a vector of all lights that are registered at this `Bridge`, sorted by their id's.
     /// This function returns an error if `bridge.username` is `None`.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
     /// for light in &bridge.get_all_lights().unwrap() {
@@ -346,7 +346,7 @@ impl Bridge {
     /// Returns a vector of all groups that are registered at this `Bridge`, sorted by their id's.
     /// This function returns an error if `bridge.username` is `None`.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
     /// for group in &bridge.get_all_groups().unwrap() {
@@ -371,7 +371,7 @@ impl Bridge {
     /// Returns a vector of all scenes that are registered at this `Bridge`, sorted by their id's.
     /// This function returns an error if `bridge.username` is `None`.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
     /// for scene in &bridge.get_all_scenes().unwrap() {
