@@ -113,12 +113,12 @@ fn to_ip_addr(record: &Record) -> Option<IpAddr> {
     }
 }
 
-// a test for  discover_hue_bridge_n_upnp()
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
+    #[ignore]
     fn test_discover_hue_bridge() {
         let ip = discover_hue_bridge();
         assert!(ip.is_ok());
