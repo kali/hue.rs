@@ -2,16 +2,18 @@ use crate::{HueError, HueError::DiscoveryError};
 use serde_json::{Map, Value};
 use futures_util::{pin_mut, stream::StreamExt};
 use futures::executor::block_on;
-use mdns::{Record, RecordKind};
+use mdns::{Error, Record, RecordKind, Response};
 use std::{net::IpAddr, time::Duration};
 use async_std::future;
+use async_std::future::TimeoutError;
+use mdns::discover::Discovery;
 
 // As Per instrucitons at
 // https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/
 pub fn discover_hue_bridge() -> Result<IpAddr, HueError> {
 
-    let bridge_ftr = discover_hue_bridge_m_dns();
-    let bridge = block_on(bridge_ftr);
+
+    let bridge = discover_hue_bridge_m_dns();
     match  bridge{
         Ok(bridge_ip) => Ok(bridge_ip),
         Err(e) => {
@@ -67,19 +69,29 @@ pub fn discover_hue_bridge_upnp() -> Result<IpAddr, HueError> {
 const SERVICE_NAME: &str = "_hue._tcp.local";
 
 // Define a function that discovers a hue bridge using mDNS
-pub async fn discover_hue_bridge_m_dns() -> Result<IpAddr, HueError> {
+pub fn discover_hue_bridge_m_dns() -> Result<IpAddr, HueError> {
     // Iterate through responses from each hue bridge device, asking for new devices every 15s
     let stream_disc = mdns::discover::all(SERVICE_NAME, Duration::from_secs(1));
-    let stream = match stream_disc {
-        Ok(s) => s.listen(),
+    extract_result_from_stream(stream_disc)
+}
+
+fn extract_result_from_stream(stream_disc: Result<Discovery, Error>) -> Result<IpAddr, HueError> {
+    match stream_disc {
+        Ok(s) => {
+            let stream = s.listen();
+            pin_mut!(stream);
+            let response = block_on(async_std::future::timeout(Duration::from_secs(5), stream.next()));
+            resolve_mdns_result(response)
+        },
         Err(_e) => {
-            return Err(DiscoveryError {
+            Err(DiscoveryError {
                 msg: _e.to_string(),
             })
         }
-    };
-    pin_mut!(stream);
-    let response = async_std::future::timeout(Duration::from_secs(5), stream.next()).await;
+    }
+}
+
+fn resolve_mdns_result(response: Result<Option<Result<Response, Error>>, TimeoutError>) -> Result<IpAddr, HueError> {
     match response {
         Ok(Some(Ok(response))) => {
             // Get the first IP address from the response
@@ -113,6 +125,8 @@ fn to_ip_addr(record: &Record) -> Option<IpAddr> {
     }
 }
 
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -125,4 +139,25 @@ mod tests {
         let ip = ip.unwrap();
         assert_eq!(ip.to_string(), "192.168.1.149");
     }
-}
+
+    // a test for extract_result_from_stream that takes a stream as input
+    #[test]
+    fn test_extract_result_from_stream() {
+        // create a stream with a single response
+        let stream_disc = create_single_response_stream();
+        let result = extract_result_from_stream(stream_disc);
+        assert!(result.is_ok());
+        let ip = result.unwrap();
+        assert_eq!(ip.to_string(), "192.168.1.149")
+    }
+
+    // an implementation of create_single_response_stream
+    fn create_single_response_stream() -> Result<Discovery, Error> {
+        // create a response with a single record
+        let mut response = Response::new();
+        let record = Record::new("_hue._tcp.local".into(), RecordKind::A("192.168.1.149", 80));
+        response.add_record(record);
+        // create a stream with a single response
+        let stream = futures::stream::once(future::ready(Ok(response)));
+        Ok(Discovery::new(stream))
+    }
