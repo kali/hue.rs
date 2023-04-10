@@ -53,7 +53,7 @@ pub fn discover_hue_bridge_upnp() -> Result<IpAddr, HueError> {
     // https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/
     // this method is now deprecated
     Ok(
-        ssdp_probe::ssdp_probe_v4(br"IpBridge", 1, std::time::Duration::from_secs(5))?
+        ssdp_probe::ssdp_probe_v4(br"IpBridge", 1, std::time::Duration::from_secs(1))?
             .first()
             .map(|it| it.to_owned().into())
             .ok_or(DiscoveryError {
@@ -73,14 +73,21 @@ pub fn discover_hue_bridge_m_dns() -> Result<IpAddr, HueError> {
 fn read_mdns_response(stream: impl Stream<Item=Result<Response, Error>> + Sized) -> Result<IpAddr, HueError> {
     pin_mut!(stream);
     let response_or = block_on(async_std::future::timeout(Duration::from_secs(5), stream.next()));
-    let response = response_or.expect("Could not discover bridge").expect("No Bridge found").expect("No Bridge found");
+    let response = match response_or {
+        Ok(Some(Ok(response))) => response,
+        Ok(Some(Err(e))) => Err(DiscoveryError { msg: format!("Error reading mDNS response: {}", e) })?,
+        Ok(None) => Err(DiscoveryError { msg: "No mDNS response found".into() })?,
+        Err(_) => Err(DiscoveryError { msg: "Timed out waiting for mDNS response".into() })?,
+    };
     response.ip_addr().ok_or(DiscoveryError { msg: "No IP address found".into() })
 }
 
 
 #[cfg(test)]
 mod tests {
+    use std::future;
     use mdns::RecordKind::A;
+    use futures::FutureExt;
     use super::*;
 
     #[test]
@@ -114,5 +121,20 @@ mod tests {
         assert_eq!(ip.to_string(), "192.168.1.149");
     }
 
+    #[test]
+    fn should_error_when_no_mdns_bridge_found() {
+        let stream = futures::stream::iter(vec![]);
+        let ip = read_mdns_response(stream);
+        assert!(ip.is_err());
+    }
 
+    #[test]
+    fn should_timeout_when_timeout_exceeded() {
+        // this stream never returns a value
+        let stream =  futures::future::pending::<Result<Response, Error>>().into_stream();
+        let ip = read_mdns_response(stream);
+        //assert that the error message is "Timed out waiting for mDNS response"
+        assert!(ip.is_err());
+        assert_eq!(ip.err().unwrap().to_string(), "A discovery error occurred: Timed out waiting for mDNS response");
+    }
 }
