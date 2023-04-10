@@ -1,10 +1,12 @@
-use crate::{HueError, HueError::DiscoveryError};
+use crate::{HueError, HueError::DiscoveryError, HueError::ProtocolError};
 use serde_json::{Map, Value};
 use futures_util::{pin_mut, stream::StreamExt};
 use futures::executor::block_on;
-use mdns::{Error, Record, Response};
+use mdns::{Error, Record};
 use std::{net::IpAddr, time::Duration};
+use std::string::ToString;
 use async_std::prelude::Stream;
+use mockall::automock;
 
 
 // As Per instrucitons at
@@ -26,9 +28,31 @@ pub fn discover_hue_bridge() -> Result<IpAddr, HueError> {
     }
 }
 
+pub mod discover {
+    #[mockall::automock]
+    pub mod get_request {
+        use super::super::*;
+
+        pub fn get(url: &str) -> Result<String, HueError> {
+            let response = reqwest::blocking::get(url.to_string());
+            match response {
+                Ok(response) => Ok(response.text()?),
+                Err(e) => Err(ProtocolError {
+                    msg: format!("Error getting url: {}", e)
+                }),
+            }
+        }
+    }
+}
+
+#[mockall_double::double]
+use discover::get_request;
+
+const MEET_HUE_URL : &str= "https://discovery.meethue.com";
+
 pub fn discover_hue_bridge_n_upnp() -> Result<IpAddr, HueError> {
-    let objects: Vec<Map<String, Value>> =
-        reqwest::blocking::get("https://discovery.meethue.com/")?.json()?;
+    let response = get_request::get(MEET_HUE_URL);
+    let objects: Vec<Map<String, Value>> =  serde_json::from_str(response?.as_str())?;
 
     if objects.len() == 0 {
         Err(DiscoveryError {
@@ -70,7 +94,7 @@ pub fn discover_hue_bridge_m_dns() -> Result<IpAddr, HueError> {
     read_mdns_response(mdns::discover::all(SERVICE_NAME, Duration::from_secs(1)).unwrap().listen())
 }
 
-fn read_mdns_response(stream: impl Stream<Item=Result<Response, Error>> + Sized) -> Result<IpAddr, HueError> {
+fn read_mdns_response(stream: impl Stream<Item=Result<mdns::Response, Error>> + Sized) -> Result<IpAddr, HueError> {
     pin_mut!(stream);
     let response_or = block_on(async_std::future::timeout(Duration::from_secs(5), stream.next()));
     let response = match response_or {
@@ -85,10 +109,10 @@ fn read_mdns_response(stream: impl Stream<Item=Result<Response, Error>> + Sized)
 
 #[cfg(test)]
 mod tests {
-    use std::future;
     use mdns::RecordKind::A;
     use futures::FutureExt;
     use super::*;
+
 
     #[test]
     #[ignore]
@@ -110,7 +134,7 @@ mod tests {
             kind: (A("192.168.1.149".parse().unwrap())),
         };
 
-        let response = Response {
+        let response = mdns::Response {
             answers: vec![record],
             nameservers: vec![],
             additional: vec![],
@@ -131,10 +155,41 @@ mod tests {
     #[test]
     fn should_timeout_when_timeout_exceeded() {
         // this stream never returns a value
-        let stream =  futures::future::pending::<Result<Response, Error>>().into_stream();
+        let stream =  futures::future::pending::<Result<mdns::Response, Error>>().into_stream();
         let ip = read_mdns_response(stream);
         //assert that the error message is "Timed out waiting for mDNS response"
         assert!(ip.is_err());
         assert_eq!(ip.err().unwrap().to_string(), "A discovery error occurred: Timed out waiting for mDNS response");
     }
+
+
+
+
+
+    // [{"id":"ecb5fafffe8381f2","internalipaddress":"192.168.1.149","port":443}]
+
+    // a test for the n-upnp discovery method
+    #[test]
+    #[ignore]
+    fn test_discover_hue_bridge_n_upnp() {
+        let ip = discover_hue_bridge_n_upnp();
+        assert!(ip.is_ok());
+        let ip = ip.unwrap();
+        assert_eq!(ip.to_string(), "192.168.1.149");
+    }
+
+    const HUE_RESPONSE : &str = "[{\"id\":\"ecb5fafffe8381f2\",\"internalipaddress\":\"192.168.1.143\",\"port\":443}]";
+    // a test for the n-upnp discovery method using a mock get request
+    #[test]
+    fn test_discover_hue_bridge_n_upnp_mock() {
+        let mut mock = get_request::get_context();
+        mock.expect()
+            .returning(|_| Ok(HUE_RESPONSE.to_string()));
+        let ip = discover_hue_bridge_n_upnp();
+        assert!(ip.is_ok());
+        let ip = ip.unwrap();
+        assert_eq!(ip.to_string(), "192.168.1.143")
+    }
+
+
 }
