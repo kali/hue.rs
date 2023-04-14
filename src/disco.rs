@@ -1,12 +1,13 @@
-use crate::{HueError, HueError::DiscoveryError, HueError::ProtocolError};
+use crate::{HueError, HueError::DiscoveryError, hue_http::*};
 use serde_json::{Map, Value};
 use futures_util::{pin_mut, stream::StreamExt};
 use futures::executor::block_on;
 use mdns::{Error, Record};
 use std::{net::IpAddr, time::Duration};
-use std::string::ToString;
 use async_std::prelude::Stream;
-use mockall::automock;
+
+#[mockall_double::double]
+use hue_http::get_request;
 
 
 // As Per instrucitons at
@@ -28,26 +29,6 @@ pub fn discover_hue_bridge() -> Result<IpAddr, HueError> {
     }
 }
 
-pub mod hue_http {
-
-    #[mockall::automock]
-    pub mod get_request {
-        use super::super::*;
-
-        pub fn get(url: &str) -> Result<String, HueError> {
-            let response = reqwest::blocking::get(url.to_string());
-            match response {
-                Ok(response) => Ok(response.text()?),
-                Err(e) => Err(ProtocolError {
-                    msg: format!("Error getting url: {}", e)
-                }),
-            }
-        }
-    }
-}
-
-#[mockall_double::double]
-use hue_http::get_request;
 
 const MEET_HUE_URL : &str= "https://discovery.meethue.com";
 
@@ -118,7 +99,7 @@ mod tests {
             name: "_hue._tcp.local".to_string(),
             class: dns_parser::Class::IN,
             ttl: 0,
-            kind: (A("192.168.1.149".parse().unwrap())),
+            kind: (A("192.168.1.145".parse().unwrap())),
         };
 
         let response = mdns::Response {
@@ -129,7 +110,7 @@ mod tests {
 
         let stream = futures::stream::iter(vec![Ok::<mdns::Response, Error>(response)]);
         let ip = read_mdns_response(stream).unwrap();
-        assert_eq!(ip.to_string(), "192.168.1.149");
+        assert_eq!(ip.to_string(), "192.168.1.145");
     }
 
     #[test]
@@ -163,7 +144,7 @@ mod tests {
     // a test for the n-upnp discovery method using a mock get request
     #[test]
     fn test_discover_hue_bridge_n_upnp_mock() {
-        let mut mock = get_request::get_context();
+        let mock = get_request::get_context();
         mock.expect()
             .returning(|_| Ok(TEST_HUE_RESPONSE.to_string()));
         let ip = discover_hue_bridge_n_upnp();
