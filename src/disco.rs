@@ -28,8 +28,7 @@ pub fn discover_hue_bridge() -> Result<IpAddr, HueError> {
     }
 }
 
-pub mod discover {
-
+pub mod hue_http {
 
     #[mockall::automock]
     pub mod get_request {
@@ -48,7 +47,7 @@ pub mod discover {
 }
 
 #[mockall_double::double]
-use discover::get_request;
+use hue_http::get_request;
 
 const MEET_HUE_URL : &str= "https://discovery.meethue.com";
 
@@ -72,20 +71,6 @@ pub fn discover_hue_bridge_n_upnp() -> Result<IpAddr, HueError> {
             msg: "expect a string in internalipaddress".into(),
         })?
         .parse()?)
-}
-
-pub fn discover_hue_bridge_upnp() -> Result<IpAddr, HueError> {
-    // use 'IpBridge' as a marker and a max duration of 5s as per
-    // https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/
-    // this method is now deprecated
-    Ok(
-        ssdp_probe::ssdp_probe_v4(br"IpBridge", 1, std::time::Duration::from_secs(1))?
-            .first()
-            .map(|it| it.to_owned().into())
-            .ok_or(DiscoveryError {
-                msg: "could not find bridge with ssdp_probe".into(),
-            })?,
-    )
 }
 
 // Define the service name for hue bridge
@@ -163,12 +148,6 @@ mod tests {
         assert!(ip.is_err());
         assert_eq!(ip.err().unwrap().to_string(), "A discovery error occurred: Timed out waiting for mDNS response");
     }
-
-
-
-
-
-    // [{"id":"ecb5fafffe8381f2","internalipaddress":"192.168.1.149","port":443}]
 
     // a test for the n-upnp discovery method
     #[test]
