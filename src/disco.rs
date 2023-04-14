@@ -29,6 +29,8 @@ pub fn discover_hue_bridge() -> Result<IpAddr, HueError> {
 }
 
 pub mod discover {
+
+
     #[mockall::automock]
     pub mod get_request {
         use super::super::*;
@@ -178,13 +180,13 @@ mod tests {
         assert_eq!(ip.to_string(), "192.168.1.149");
     }
 
-    const HUE_RESPONSE : &str = "[{\"id\":\"ecb5fafffe8381f2\",\"internalipaddress\":\"192.168.1.143\",\"port\":443}]";
+    const TEST_HUE_RESPONSE : &str = "[{\"id\":\"ecb5fafffe8381f2\",\"internalipaddress\":\"192.168.1.143\",\"port\":443}]";
     // a test for the n-upnp discovery method using a mock get request
     #[test]
     fn test_discover_hue_bridge_n_upnp_mock() {
         let mut mock = get_request::get_context();
         mock.expect()
-            .returning(|_| Ok(HUE_RESPONSE.to_string()));
+            .returning(|_| Ok(TEST_HUE_RESPONSE.to_string()));
         let ip = discover_hue_bridge_n_upnp();
         assert!(ip.is_ok());
         let ip = ip.unwrap();
