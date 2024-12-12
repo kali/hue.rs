@@ -190,7 +190,7 @@ impl UnauthBridge {
         let obtain = PostApi {
             devicetype: devicetype.to_string(),
         };
-        let url = format!("http://{}/api", self.ip);
+        let url = format!("https://{}/api", self.ip);
         let resp: BridgeResponse<SuccessResponse<Username>> =
             self.client.post(&url).json(&obtain).send()?.json()?;
         let resp = resp.get()?;
@@ -214,6 +214,34 @@ pub struct Bridge {
     client: reqwest::blocking::Client,
 }
 
+fn create_reqwest_client() -> reqwest::blocking::Client {
+    reqwest::blocking::Client::builder()
+        // see https://developers.meethue.com/develop/application-design-guidance/using-https/
+        .add_root_certificate(
+            reqwest::Certificate::from_pem(
+                b"-----BEGIN CERTIFICATE-----
+MIICMjCCAdigAwIBAgIUO7FSLbaxikuXAljzVaurLXWmFw4wCgYIKoZIzj0EAwIw
+OTELMAkGA1UEBhMCTkwxFDASBgNVBAoMC1BoaWxpcHMgSHVlMRQwEgYDVQQDDAty
+b290LWJyaWRnZTAiGA8yMDE3MDEwMTAwMDAwMFoYDzIwMzgwMTE5MDMxNDA3WjA5
+MQswCQYDVQQGEwJOTDEUMBIGA1UECgwLUGhpbGlwcyBIdWUxFDASBgNVBAMMC3Jv
+b3QtYnJpZGdlMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjNw2tx2AplOf9x86
+aTdvEcL1FU65QDxziKvBpW9XXSIcibAeQiKxegpq8Exbr9v6LBnYbna2VcaK0G22
+jOKkTqOBuTCBtjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBhjAdBgNV
+HQ4EFgQUZ2ONTFrDT6o8ItRnKfqWKnHFGmQwdAYDVR0jBG0wa4AUZ2ONTFrDT6o8
+ItRnKfqWKnHFGmShPaQ7MDkxCzAJBgNVBAYTAk5MMRQwEgYDVQQKDAtQaGlsaXBz
+IEh1ZTEUMBIGA1UEAwwLcm9vdC1icmlkZ2WCFDuxUi22sYpLlwJY81Wrqy11phcO
+MAoGCCqGSM49BAMCA0gAMEUCIEBYYEOsa07TH7E5MJnGw557lVkORgit2Rm1h3B2
+sFgDAiEA1Fj/C3AN5psFMjo0//mrQebo0eKd3aWRx+pQY08mk48=
+-----END CERTIFICATE-----",
+            )
+            .expect("using rustls and this hardcoded certificate should never fail"),
+        )
+        // TODO properly handle older bridges that still use a self-signed certificate
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap()
+}
+
 impl Bridge {
     /// Create a bridge at this IP. If you know the IP-address, this is the fastest option. Note
     /// that this function does not validate whether a bridge is really present at the IP-address.
@@ -224,7 +252,7 @@ impl Bridge {
     pub fn for_ip(ip: impl Into<std::net::IpAddr>) -> UnauthBridge {
         UnauthBridge {
             ip: ip.into(),
-            client: reqwest::blocking::Client::new(),
+            client: create_reqwest_client(),
         }
     }
 
@@ -239,7 +267,7 @@ impl Bridge {
             .ok()
             .map(|ip| UnauthBridge {
                 ip,
-                client: reqwest::blocking::Client::new(),
+                client: create_reqwest_client(),
             })
     }
 
@@ -291,7 +319,7 @@ impl Bridge {
         let obtain = PostApi {
             devicetype: devicetype.to_string(),
         };
-        let url = format!("http://{}/api", self.ip);
+        let url = format!("https://{}/api", self.ip);
         let resp: BridgeResponse<SuccessResponse<Username>> =
             self.client.post(&url).json(&obtain).send()?.json()?;
         let resp = resp.get()?;
@@ -314,7 +342,7 @@ impl Bridge {
     /// }
     /// ```
     pub fn get_all_lights(&self) -> crate::Result<Vec<IdentifiedLight>> {
-        let url = format!("http://{}/api/{}/lights", self.ip, self.username);
+        let url = format!("https://{}/api/{}/lights", self.ip, self.username);
         type Resp = BridgeResponse<HashMap<String, Light>>;
         let resp: Resp = self.client.get(&url).send()?.json()?;
         let mut lights = vec![];
@@ -338,7 +366,7 @@ impl Bridge {
     /// }
     /// ```
     pub fn get_all_groups(&self) -> crate::Result<Vec<IdentifiedGroup>> {
-        let url = format!("http://{}/api/{}/groups", self.ip, self.username);
+        let url = format!("https://{}/api/{}/groups", self.ip, self.username);
         type Resp = BridgeResponse<HashMap<String, Group>>;
         let resp: Resp = self.client.get(&url).send()?.json()?;
         let mut groups = vec![];
@@ -362,22 +390,19 @@ impl Bridge {
     /// }
     /// ```
     pub fn get_all_scenes(&self) -> crate::Result<Vec<IdentifiedScene>> {
-        let url = format!("http://{}/api/{}/scenes", self.ip, self.username);
+        let url = format!("https://{}/api/{}/scenes", self.ip, self.username);
         type Resp = BridgeResponse<HashMap<String, Scene>>;
         let resp: Resp = self.client.get(&url).send()?.json()?;
         let mut scenes = vec![];
         for (k, scene) in resp.get()? {
-            scenes.push(IdentifiedScene {
-                id: k,
-                scene,
-            });
+            scenes.push(IdentifiedScene { id: k, scene });
         }
         scenes.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(scenes)
     }
 
     pub fn set_scene(&self, scene: String) -> crate::Result<Value> {
-        let url = format!("http://{}/api/{}/groups/0/action", self.ip, self.username);
+        let url = format!("https://{}/api/{}/groups/0/action", self.ip, self.username);
         let command = CommandLight::default().scene(scene);
         let resp: BridgeResponse<Value> = self.client.put(&url).json(&command).send()?.json()?;
         resp.get()
@@ -385,7 +410,7 @@ impl Bridge {
 
     pub fn set_group_state(&self, group: usize, command: &CommandLight) -> crate::Result<Value> {
         let url = format!(
-            "http://{}/api/{}/groups/{}/action",
+            "https://{}/api/{}/groups/{}/action",
             self.ip, self.username, group
         );
         let resp: BridgeResponse<Value> = self.client.put(&url).json(command).send()?.json()?;
@@ -394,7 +419,7 @@ impl Bridge {
 
     pub fn set_light_state(&self, light: usize, command: &CommandLight) -> crate::Result<Value> {
         let url = format!(
-            "http://{}/api/{}/lights/{}/state",
+            "https://{}/api/{}/lights/{}/state",
             self.ip, self.username, light
         );
         let resp: BridgeResponse<Value> = self.client.put(&url).json(command).send()?.json()?;
