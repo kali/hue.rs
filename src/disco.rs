@@ -4,7 +4,6 @@ use futures_util::{pin_mut, stream::StreamExt};
 use futures::executor::block_on;
 use mdns::{Record, RecordKind};
 use std::{net::IpAddr, time::Duration};
-use async_std::future;
 
 // As Per instrucitons at
 // https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/
@@ -15,6 +14,7 @@ pub fn discover_hue_bridge() -> Result<IpAddr, HueError> {
     match  bridge{
         Ok(bridge_ip) => Ok(bridge_ip),
         Err(e) => {
+            log::debug!("Error in mDNS discovery: {}, falling back to n-upnp", e);
             let n_upnp_result = discover_hue_bridge_n_upnp();
             if n_upnp_result.is_err() {
                 Err(DiscoveryError {
@@ -31,12 +31,12 @@ pub fn discover_hue_bridge_n_upnp() -> Result<IpAddr, HueError> {
     let objects: Vec<Map<String, Value>> =
         reqwest::blocking::get("https://discovery.meethue.com/")?.json()?;
 
-    if objects.len() == 0 {
+    if objects.is_empty() {
         Err(DiscoveryError {
             msg: "expected non-empty array".into(),
         })?
     }
-    let ref object = objects[0];
+    let object = &objects[0];
 
     let ip = object.get("internalipaddress").ok_or(DiscoveryError {
         msg: "Expected internalipaddress".into(),
@@ -47,20 +47,6 @@ pub fn discover_hue_bridge_n_upnp() -> Result<IpAddr, HueError> {
             msg: "expect a string in internalipaddress".into(),
         })?
         .parse()?)
-}
-
-pub fn discover_hue_bridge_upnp() -> Result<IpAddr, HueError> {
-    // use 'IpBridge' as a marker and a max duration of 5s as per
-    // https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/
-    // this method is now deprecated
-    Ok(
-        ssdp_probe::ssdp_probe_v4(br"IpBridge", 1, std::time::Duration::from_secs(5))?
-            .first()
-            .map(|it| it.to_owned().into())
-            .ok_or(DiscoveryError {
-                msg: "could not find bridge with ssdp_probe".into(),
-            })?,
-    )
 }
 
 // Define the service name for hue bridge

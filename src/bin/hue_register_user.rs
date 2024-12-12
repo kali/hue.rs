@@ -19,7 +19,7 @@ fn main() {
                     println!("{}", r.username);
                     break;
                 }
-                Err(HueError::BridgeError { code, .. }) if code == 101 => {
+                Err(HueError::BridgeError { code: 101, .. }) => {
                     println!("Push the bridge button");
                     std::thread::sleep(::std::time::Duration::from_secs(5));
                 }

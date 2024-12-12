@@ -12,7 +12,7 @@ fn main() {
     match bridge.get_all_lights() {
         Ok(lights) => {
             println!("id name                 on    bri   hue sat temp  x      y");
-            for ref l in lights.iter() {
+            for l in lights.iter() {
                 println!(
                     "{:2} {:20} {:5} {:3} {:5} {:3} {:4}K {:4} {:4}",
                     l.id,

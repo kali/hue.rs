@@ -67,7 +67,7 @@ pub struct IdentifiedScene {
     pub scene: Scene,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CommandLight {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub on: Option<bool>,
@@ -87,22 +87,6 @@ pub struct CommandLight {
     pub alert: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scene: Option<String>,
-}
-
-impl Default for CommandLight {
-    fn default() -> CommandLight {
-        CommandLight {
-            on: None,
-            bri: None,
-            hue: None,
-            sat: None,
-            transitiontime: None,
-            ct: None,
-            xy: None,
-            alert: None,
-            scene: None,
-        }
-    }
 }
 
 impl CommandLight {
@@ -167,7 +151,7 @@ impl CommandLight {
 pub struct UnauthBridge {
     /// The IP-address of the bridge.
     pub ip: std::net::IpAddr,
-    pub(self) client: reqwest::blocking::Client,
+    client: reqwest::blocking::Client,
 }
 
 impl UnauthBridge {
@@ -227,7 +211,7 @@ pub struct Bridge {
     pub ip: std::net::IpAddr,
     /// This is the username of the currently logged in user.
     pub username: String,
-    pub(self) client: reqwest::blocking::Client,
+    client: reqwest::blocking::Client,
 }
 
 impl Bridge {
@@ -385,7 +369,7 @@ impl Bridge {
         for (k, scene) in resp.get()? {
             scenes.push(IdentifiedScene {
                 id: k,
-                scene: scene,
+                scene,
             });
         }
         scenes.sort_by(|a, b| a.id.cmp(&b.id));
@@ -452,6 +436,7 @@ struct BridgeError {
 
 #[derive(Debug, serde::Deserialize)]
 struct BridgeErrorInner {
+    #[allow(dead_code)]
     address: String,
     description: String,
     r#type: usize,

@@ -14,7 +14,7 @@ fn main() {
         return;
     }
     let bridge = hueclient::Bridge::discover_required().with_user(args[1].to_string());
-    let ref lights: Vec<usize> = args[2]
+    let lights: Vec<usize> = args[2]
         .split(",")
         .map(|s| s.parse::<usize>().unwrap())
         .collect();

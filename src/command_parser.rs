@@ -8,28 +8,28 @@ pub fn parse_command(args: Vec<String>) -> CommandLight {
     let re_xy = Regex::new("(0\\.[0-9]+),(0\\.[0-9]+)(:([0-9]{0,5}))?").unwrap();
     let re_rrggbb = Regex::new("([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})").unwrap();
 
-    let ref command = args[3];
+    let command = &args[3];
     let mut parsed = match &command[..] {
         "on" => CommandLight::default().on(),
         "off" => CommandLight::default().off(),
-        _ if re_triplet.is_match(&command) => {
-            let caps = re_triplet.captures(&command).unwrap();
+        _ if re_triplet.is_match(command) => {
+            let caps = re_triplet.captures(command).unwrap();
             let mut command = CommandLight::default().on();
             command.bri = caps.get(1).and_then(|s| s.as_str().parse::<u8>().ok());
             command.hue = caps.get(2).and_then(|s| s.as_str().parse::<u16>().ok());
             command.sat = caps.get(3).and_then(|s| s.as_str().parse::<u8>().ok());
             command
         }
-        _ if re_mired.is_match(&command) => {
-            let caps = re_mired.captures(&command).unwrap();
+        _ if re_mired.is_match(command) => {
+            let caps = re_mired.captures(command).unwrap();
             let mut command = CommandLight::default().on();
             command.ct = caps.get(1).and_then(|s| s.as_str().parse::<u16>().ok());
             command.bri = caps.get(2).and_then(|s| s.as_str().parse::<u8>().ok());
             command.sat = Some(254);
             command
         }
-        _ if re_kelvin.is_match(&command) => {
-            let caps = re_kelvin.captures(&command).unwrap();
+        _ if re_kelvin.is_match(command) => {
+            let caps = re_kelvin.captures(command).unwrap();
             let mut command = CommandLight::default().on();
             command.ct = caps.get(1).and_then(|s| {
                 s.as_str()
@@ -41,8 +41,8 @@ pub fn parse_command(args: Vec<String>) -> CommandLight {
             command.sat = Some(254);
             command
         }
-        _ if re_rrggbb.is_match(&command) => {
-            let caps = re_rrggbb.captures(&command).unwrap();
+        _ if re_rrggbb.is_match(command) => {
+            let caps = re_rrggbb.captures(command).unwrap();
             let mut command = CommandLight::default().on();
             let rgb: Vec<u8> = [caps.get(1), caps.get(2), caps.get(3)]
                 .iter()
@@ -55,8 +55,8 @@ pub fn parse_command(args: Vec<String>) -> CommandLight {
             command.bri = Some((hsv.2 * 255f64) as u8);
             command
         }
-        _ if re_xy.is_match(&command) => {
-            let caps = re_xy.captures(&command).unwrap();
+        _ if re_xy.is_match(command) => {
+            let caps = re_xy.captures(command).unwrap();
             dbg!(&caps);
             let mut command = CommandLight::default().on();
             let x = caps.get(1).unwrap().as_str().parse::<f32>().unwrap();

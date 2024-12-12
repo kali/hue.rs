@@ -39,9 +39,6 @@ pub enum HueError {
     /// Returned when discovery.meethue.com returns an invalid IP-address.
     #[error("An error occurred while parsing an address")]
     AddrParse(#[from] std::net::AddrParseError),
-    /// Returned when the SSDP probe fails to scan the current network for a bridge.
-    #[error("An error occurred during SSDP discovery")]
-    SSDP(#[from] ssdp_probe::SsdpProbeError),
     /// Returned when the Bridge returns a response that does not confirm to the API spec.
     #[error("A protocol error occurred: {}", msg)]
     ProtocolError {

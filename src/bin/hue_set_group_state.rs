@@ -14,7 +14,7 @@ fn main() {
         return;
     }
     let bridge = hueclient::Bridge::discover_required().with_user(args[1].to_string());
-    let ref groups: Vec<usize> = args[2]
+    let groups: Vec<usize> = args[2]
         .split(",")
         .map(|s| s.parse::<usize>().unwrap())
         .collect();

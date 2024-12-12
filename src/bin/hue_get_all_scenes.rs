@@ -12,7 +12,7 @@ fn main() {
     match bridge.get_all_scenes() {
         Ok(scenes) => {
             println!("id name");
-            for ref l in scenes.iter() {
+            for l in scenes.iter() {
                 println!("{:2} {:40}", l.id, l.scene.name,);
             }
         }
