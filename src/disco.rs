@@ -8,20 +8,27 @@ use std::{net::IpAddr, time::Duration};
 // As Per instrucitons at
 // https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/
 pub fn discover_hue_bridge() -> Result<IpAddr, HueError> {
-
     let bridge_ftr = discover_hue_bridge_m_dns();
     let bridge = block_on(bridge_ftr);
-    match  bridge{
-        Ok(bridge_ip) => Ok(bridge_ip),
-        Err(e) => {
-            log::debug!("Error in mDNS discovery: {}, falling back to n-upnp", e);
+    match bridge{
+        Ok(bridge_ip) =>  {
+            log::info!("discovered bridge at {bridge_ip} using mDNS");
+            Ok(bridge_ip)
+        },
+        Err(mdns_error) => {
+            log::debug!("Error in mDNS discovery: {}, falling back to n-upnp", mdns_error);
             let n_upnp_result = discover_hue_bridge_n_upnp();
-            if n_upnp_result.is_err() {
-                Err(DiscoveryError {
-                    msg: "Could not discover bridge".into(),
-                })?
-            } else {
-                n_upnp_result
+            match n_upnp_result {
+                Ok(bridge_ip) => {
+                    log::info!("discovered bridge at {bridge_ip} using n-upnp");
+                    Ok(bridge_ip)
+                },
+                Err(nupnp_error) => {
+                    log::debug!("Failed to discover bridge using or n-upnp: {nupnp_error}");
+                    Err(DiscoveryError {
+                        msg: "Could not discover bridge".into(),
+                    })?
+                }
             }
         },
     }

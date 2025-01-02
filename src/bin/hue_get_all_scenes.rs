@@ -3,6 +3,9 @@ use std::env;
 
 #[allow(dead_code)]
 fn main() {
+    #[cfg(feature = "pretty_env_logger")]
+    pretty_env_logger::init_custom_env("HUE_LOG");
+
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         println!("usage : {:?} <username>", args[0]);
@@ -17,7 +20,8 @@ fn main() {
             }
         }
         Err(err) => {
-            println!("Error: {}", err);
+            log::error!("Error: {err:#?}");
+            println!("Error: {err}");
             ::std::process::exit(2)
         }
     }
