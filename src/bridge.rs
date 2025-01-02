@@ -162,10 +162,11 @@ impl UnauthBridge {
     ///     .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
     /// ```
     pub fn with_user(self, username: impl Into<String>) -> Bridge {
+        let username = username.into();
         Bridge {
             ip: self.ip,
-            username: username.into(),
-            client: self.client,
+            client: create_reqwest_client(Some(&username)),
+            username,
         }
     }
 
@@ -175,8 +176,9 @@ impl UnauthBridge {
     /// ### Example
     /// ```no_run
     /// let mut bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4]);
-    /// let password = bridge.register_user("mylaptop").unwrap();
-    /// // now this password can be stored and reused
+    /// let auth_bridge = bridge.register_user("mylaptop").unwrap();
+    /// let key = auth_bridge.username;
+    /// // now this key can be stored and reused
     /// ```
     pub fn register_user(self, devicetype: &str) -> crate::Result<Bridge> {
         #[derive(Serialize)]
@@ -195,10 +197,11 @@ impl UnauthBridge {
             self.client.post(&url).json(&obtain).send()?.json()?;
         let resp = resp.get()?;
 
+        let username = resp.success.username;
         Ok(Bridge {
             ip: self.ip,
-            username: resp.success.username,
-            client: self.client,
+            client: create_reqwest_client(Some(&username)),
+            username,
         })
     }
 }
@@ -214,7 +217,7 @@ pub struct Bridge {
     client: reqwest::blocking::Client,
 }
 
-fn create_reqwest_client() -> reqwest::blocking::Client {
+fn create_reqwest_client(application_key: Option<&str>) -> reqwest::blocking::Client {
     reqwest::blocking::Client::builder()
         // see https://developers.meethue.com/develop/application-design-guidance/using-https/
         .add_root_certificate(
@@ -238,6 +241,17 @@ sFgDAiEA1Fj/C3AN5psFMjo0//mrQebo0eKd3aWRx+pQY08mk48=
         )
         // TODO properly handle older bridges that still use a self-signed certificate
         .danger_accept_invalid_certs(true)
+        .default_headers({
+            let mut headers = reqwest::header::HeaderMap::new();
+            if let Some(key) = application_key {
+
+            headers.insert(
+                reqwest::header::HeaderName::from_static("hue-application-key"),
+                reqwest::header::HeaderValue::from_str(key).unwrap(),
+            );
+            }
+            headers
+        })
         .build()
         .unwrap()
 }
@@ -252,7 +266,7 @@ impl Bridge {
     pub fn for_ip(ip: impl Into<std::net::IpAddr>) -> UnauthBridge {
         UnauthBridge {
             ip: ip.into(),
-            client: create_reqwest_client(),
+            client: create_reqwest_client(None),
         }
     }
 
@@ -267,7 +281,7 @@ impl Bridge {
             .ok()
             .map(|ip| UnauthBridge {
                 ip,
-                client: create_reqwest_client(),
+                client: create_reqwest_client(None),
             })
     }
 
