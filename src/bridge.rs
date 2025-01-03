@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use futures::Stream;
+use futures::StreamExt;
+use reqwest::{Method};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceIdentifier {
@@ -39,6 +42,7 @@ pub struct ColorTemperature {
     pub mirek_valid: bool,
     pub mirek_schema: MirekSchema,
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XY {
     pub x: f32,
@@ -213,12 +217,29 @@ impl CommandLight {
     }
 }
 
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventColorTemperature {
+    pub mirek: Option<u16>,
+    pub mirek_valid: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Event {
+    pub id: String,
+    pub id_v1: Option<String>,
+    pub on: Option<On>,
+    pub dimming: Option<CommandLightDimming>,
+    pub color_temperature: Option<EventColorTemperature>,
+    pub color: Option<CommandLightColor>,
+}
+
 /// An unauthenticated bridge is a bridge that has not
 #[derive(Debug, Clone)]
 pub struct UnauthBridge {
     /// The IP-address of the bridge.
     pub ip: std::net::IpAddr,
-    client: reqwest::blocking::Client,
+    client: reqwest::Client,
 }
 
 impl UnauthBridge {
@@ -247,7 +268,7 @@ impl UnauthBridge {
     /// let key = auth_bridge.application_key;
     /// // now this key can be stored and reused
     /// ```
-    pub fn register_application(self, name: &str) -> crate::Result<Bridge> {
+    pub async fn register_application(self, name: &str) -> crate::Result<Bridge> {
         #[derive(Serialize)]
         struct PostApi {
             devicetype: String,
@@ -261,7 +282,7 @@ impl UnauthBridge {
         };
         let url = format!("https://{}/api", self.ip);
         let resp: BridgeResponse<SuccessResponse<Username>> =
-            self.client.post(&url).json(&obtain).send()?.json()?;
+            self.client.post(&url).json(&obtain).send().await?.json().await?;
         let resp = resp.get()?;
 
         let username = resp.success.username;
@@ -281,11 +302,11 @@ pub struct Bridge {
     pub ip: std::net::IpAddr,
     /// This is the username of the currently logged in user.
     pub application_key: String,
-    client: reqwest::blocking::Client,
+    client: reqwest::Client,
 }
 
-fn create_reqwest_client(application_key: Option<&str>) -> reqwest::blocking::Client {
-    reqwest::blocking::Client::builder()
+fn create_reqwest_client(application_key: Option<&str>) -> reqwest::Client {
+    reqwest::Client::builder()
         // see https://developers.meethue.com/develop/application-design-guidance/using-https/
         .add_root_certificate(
             reqwest::Certificate::from_pem(
@@ -388,7 +409,7 @@ impl Bridge {
     /// // now this username d can be stored and reused
     /// println!("the password was {}", bridge.application_key);
     /// ```
-    pub fn register_application(self, name: &str) -> crate::Result<Bridge> {
+    pub async fn register_application(self, name: &str) -> crate::Result<Bridge> {
         #[derive(Serialize)]
         struct PostApi {
             devicetype: String,
@@ -402,7 +423,7 @@ impl Bridge {
         };
         let url = format!("https://{}/api", self.ip);
         let resp: BridgeResponse<SuccessResponse<Username>> =
-            self.client.post(&url).json(&obtain).send()?.json()?;
+            self.client.post(&url).json(&obtain).send().await?.json().await?;
         let resp = resp.get()?;
 
         Ok(Bridge {
@@ -423,16 +444,16 @@ impl Bridge {
     ///     println!("{:?}", light);
     /// }
     /// ```
-    pub fn get_all_lights(&self) -> crate::Result<Vec<Light>> {
+    pub async fn get_all_lights(&self) -> crate::Result<Vec<Light>> {
         let url = format!("https://{}/clip/v2/resource/light", self.ip);
-        let resp: BridgeResponseV2<Light> = self.client.get(&url).send()?.json()?;
+        let resp: BridgeResponseV2<Light> = self.client.get(&url).send().await?.json().await?;
         let mut lights = resp.get()?;
         lights.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(lights)
     }
 
-    pub fn index_all_lights(&self) -> crate::Result<HashMap<String, Light>> {
-        let lights = self.get_all_lights()?;
+    pub async fn index_all_lights(&self) -> crate::Result<HashMap<String, Light>> {
+        let lights = self.get_all_lights().await?;
         Ok(lights.into_iter().fold(
             HashMap::new(),
             |mut map: HashMap<String, Light>, light| {
@@ -452,18 +473,18 @@ impl Bridge {
     ///     println!("{:?}", room);
     /// }
     /// ```
-    pub fn get_all_rooms(&self) -> crate::Result<Vec<Room>> {
+    pub async fn get_all_rooms(&self) -> crate::Result<Vec<Room>> {
         let url = format!("https://{}/clip/v2/resource/room", self.ip);
-        let resp: BridgeResponseV2<Room> = self.client.get(&url).send()?.json()?;
+        let resp: BridgeResponseV2<Room> = self.client.get(&url).send().await?.json().await?;
         let mut groups = resp.get()?;
         groups.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(groups)
     }
 
-    pub fn resolve_all_rooms(&self) -> crate::Result<Vec<ResolvedRoom>> {
-        let rooms = self.get_all_rooms()?;
+    pub async fn resolve_all_rooms(&self) -> crate::Result<Vec<ResolvedRoom>> {
+        let rooms = self.get_all_rooms().await?;
 
-        let indexed_lights = self.index_all_lights()?;
+        let indexed_lights = self.index_all_lights().await?;
 
         Ok(rooms
             .into_iter()
@@ -491,18 +512,18 @@ impl Bridge {
     ///     println!("{:?}", zone);
     /// }
     /// ```
-    pub fn get_all_zones(&self) -> crate::Result<Vec<Zone>> {
+    pub async fn get_all_zones(&self) -> crate::Result<Vec<Zone>> {
         let url = format!("https://{}/clip/v2/resource/zone", self.ip);
-        let resp: BridgeResponseV2<Zone> = self.client.get(&url).send()?.json()?;
+        let resp: BridgeResponseV2<Zone> = self.client.get(&url).send().await?.json().await?;
         let mut groups = resp.get()?;
         groups.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(groups)
     }
 
-    pub fn resolve_all_zones(&self) -> crate::Result<Vec<ResolvedZone>> {
-        let zones = self.get_all_zones()?;
+    pub async fn resolve_all_zones(&self) -> crate::Result<Vec<ResolvedZone>> {
+        let zones = self.get_all_zones().await?;
 
-        let indexed_lights = self.index_all_lights()?;
+        let indexed_lights = self.index_all_lights().await?;
 
         Ok(zones
             .into_iter()
@@ -530,15 +551,15 @@ impl Bridge {
     ///     println!("{:?}", scene);
     /// }
     /// ```
-    pub fn get_all_scenes(&self) -> crate::Result<Vec<Scene>> {
+    pub async fn get_all_scenes(&self) -> crate::Result<Vec<Scene>> {
         let url = format!("https://{}/clip/v2/resource/scene", self.ip);
-        let resp: BridgeResponseV2<Scene> = self.client.get(&url).send()?.json()?;
+        let resp: BridgeResponseV2<Scene> = self.client.get(&url).send().await?.json().await?;
         let mut scenes = resp.get()?;
         scenes.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(scenes)
     }
 
-    pub fn set_scene(&self, scene: String) -> crate::Result<()> {
+    pub async fn set_scene(&self, scene: String) -> crate::Result<()> {
         let url = format!("https://{}/clip/v2/resource/scene/{}", self.ip, scene);
         let resp: BridgeResponseV2<Value> = self
             .client
@@ -548,30 +569,61 @@ impl Bridge {
                     action: "active".to_string(),
                 },
             })
-            .send()?
-            .json()?;
+            .send().await?
+            .json().await?;
         resp.get()?;
 
         Ok(())
     }
 
-    pub fn set_group_state(&self, group: &str, command: &CommandLight) -> crate::Result<()> {
+    pub async fn set_group_state(&self, group: &str, command: &CommandLight) -> crate::Result<()> {
         let url = format!(
             "https://{}/clip/v2/resource/grouped_light/{}",
             self.ip, group
         );
-        let resp: BridgeResponseV2<Value> = self.client.put(&url).json(command).send()?.json()?;
+        let resp: BridgeResponseV2<Value> = self.client.put(&url).json(command).send().await?.json().await?;
         resp.get()?;
         Ok(())
     }
 
-    pub fn set_light_state(&self, light: &str, command: &CommandLight) -> crate::Result<()> {
+    pub async fn set_light_state(&self, light: &str, command: &CommandLight) -> crate::Result<()> {
         let url = format!("https://{}/clip/v2/resource/light/{}", self.ip, light);
-        let resp: BridgeResponseV2<Value> = self.client.put(&url).json(&command).send()?.json()?;
+        let resp: BridgeResponseV2<Value> = self.client.put(&url).json(&command).send().await?.json().await?;
         resp.get()?;
         Ok(())
     }
+
+    pub fn events(&self) -> crate::Result<impl Stream<Item = HueEvent>> {
+        let request_builder = self.client.request(Method::GET, &format!("https://{}/eventstream/clip/v2", self.ip));
+        Ok(reqwest_eventsource::EventSource::new(request_builder)?.filter_map( |event| async {
+            log::debug!("event {:?}", event);
+            match event {
+                Ok(reqwest_eventsource::Event::Message(msg)) => {
+                    log::debug!("message {:?}", msg.data);
+                    match serde_json::from_str::<Vec<EventEnvelope>>(&msg.data) {
+                        Ok(mut event) => Some(HueEvent::Event {data : event.pop().unwrap().data}),
+                        Err(e) => Some(HueEvent::Error(format!("{:?}", e)))
+                    }
+
+                }
+                Ok(reqwest_eventsource::Event::Open) => None,
+                Err(e) => Some(HueEvent::Error(format!("{:?}", e)))
+            }
+        }))
+    }
 }
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct EventEnvelope {
+    data: Vec<Event>
+}
+
+#[derive(Debug, Clone)]
+pub enum HueEvent {
+    Event {data : Vec<Event>},
+    Error(String)
+}
+
 #[derive(Debug, serde::Deserialize)]
 #[serde(untagged)]
 enum BridgeResponse<T> {

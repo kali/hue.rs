@@ -2,7 +2,8 @@ extern crate hueclient;
 use std::env;
 
 #[allow(dead_code)]
-fn main() {
+#[tokio::main]
+async fn main()  {
     #[cfg(feature = "pretty_env_logger")]
     pretty_env_logger::init_custom_env("HUE_LOG");
 
@@ -13,7 +14,7 @@ fn main() {
     }
     let bridge = hueclient::Bridge::discover_required().with_user(args[1].to_string());
     println!("Rooms");
-    match bridge.resolve_all_rooms() {
+    match bridge.resolve_all_rooms().await {
         Ok(rooms) => {
             println!("id                                   name                 on");
             for  r in rooms.iter() {
@@ -41,7 +42,7 @@ fn main() {
         }
     }
     println!("Zones");
-    match bridge.resolve_all_zones() {
+    match bridge.resolve_all_zones().await {
         Ok(rooms) => {
             println!("id                                   name                 on");
             for  r in rooms.iter() {

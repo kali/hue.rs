@@ -4,7 +4,8 @@ extern crate regex;
 use std::env;
 
 #[allow(dead_code)]
-fn main() {
+#[tokio::main]
+async fn main()  {
     #[cfg(feature = "pretty_env_logger")]
     pretty_env_logger::init_custom_env("HUE_LOG");
 
@@ -26,7 +27,7 @@ fn main() {
 
     println!("lights: {:?}", lights);
     for l in lights.iter() {
-        println!("{:?}", bridge.set_light_state(*l, &parsed));
+        println!("{:?}", bridge.set_light_state(*l, &parsed).await);
         std::thread::sleep(::std::time::Duration::from_millis(50))
     }
 }

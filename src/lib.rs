@@ -32,6 +32,8 @@ pub enum HueError {
     /// Returned when a network error occurs.
     #[error("An error occurred while performing an HTTP request")]
     Reqwest(#[from] reqwest::Error),
+    #[error("An error occurred while creating an event source")]
+    ReqwestEventSource(#[from] reqwest_eventsource::CannotCloneRequestError),
     /// Returned on a JSON failure, which will usually be a problem with deserializing the bridge
     /// response.
     #[error("An error occurred while manipulating JSON")]
