@@ -15,11 +15,11 @@ fn main() {
         let bridge = hueclient::Bridge::discover_required();
         println!("posting user {:?} in {:?}", args[1], bridge);
         loop {
-            let r = bridge.clone().register_user(&args[1]);
+            let r = bridge.clone().register_application(&args[1]);
             match r {
                 Ok(r) => {
                     eprint!("done: ");
-                    println!("{}", r.username);
+                    println!("{}", r.application_key);
                     break;
                 }
                 Err(HueError::BridgeError { code: 101, .. }) => {

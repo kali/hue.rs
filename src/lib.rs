@@ -5,9 +5,9 @@
 //! ### Initial Setup
 //! ```no_run
 //! let bridge = hueclient::Bridge::discover_required()
-//!     .register_user("mycomputer") // Press the bridge before running this
+//!     .register_application("mycomputer") // Press the bridge before running this
 //!     .unwrap();
-//! println!("the username was {}", bridge.username); // handy for later
+//! println!("the username was {}", bridge.application_key); // handy for later
 //! ```
 //! ### Second run
 //! ```no_run
@@ -22,7 +22,7 @@
 //! #   .with_user(USERNAME);
 //! let cmd = hueclient::CommandLight::default().off();
 //! for light in &bridge.get_all_lights().unwrap() {
-//!     bridge.set_light_state(light.id, &cmd).unwrap();
+//!     bridge.set_light_state(&light.id, &cmd).unwrap();
 //! }
 //! ```
 
@@ -52,6 +52,11 @@ pub enum HueError {
         code: usize,
         /// An error message describing the failure.
         msg: String,
+    },
+    #[error("The bridge reported an error: {}", description)]
+    BridgeErrorV2 {
+        /// An error message describing the failure.
+        description: String,
     },
     /// Returned when discovering a bridge in the local network fails.
     #[error("A discovery error occurred: {}", msg)]

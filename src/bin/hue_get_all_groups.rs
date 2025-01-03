@@ -12,56 +12,54 @@ fn main() {
         return;
     }
     let bridge = hueclient::Bridge::discover_required().with_user(args[1].to_string());
-    match bridge.get_all_groups() {
-        Ok(groups) => {
-            println!("id name                 on    bri   hue sat temp  x      y");
-            for  l in groups.iter() {
+    println!("Rooms");
+    match bridge.resolve_all_rooms() {
+        Ok(rooms) => {
+            println!("id                                   name                 on");
+            for  r in rooms.iter() {
                 println!(
-                    "{:2} {:20} {:5} {:3} {:5} {:3} {:4}K {:4} {:4}",
-                    l.id,
-                    l.group.name,
-                    if l.group.state.all_on {
+                    "{:2} {:20} {:5}",
+                    r.id,
+                    r.metadata.name,
+                    if r.children.iter().all(|l| l.on.on) {
                         "all on"
-                    } else if l.group.state.any_on {
+                    } else if r.children.iter().any(|l| l.on.on) {
                         "some on"
                     } else {
                         "all off"
                     },
-                    if l.group.action.bri.is_some() {
-                        l.group.action.bri.unwrap()
+                );
+                for service in &r.services {
+                    println!("  service: {} {}", service.rid, service.rtype);
+                }
+            }
+        }
+        Err(err) => {
+            log::error!("Error: {err:#?}");
+            println!("Error: {err}");
+            ::std::process::exit(2)
+        }
+    }
+    println!("Zones");
+    match bridge.resolve_all_zones() {
+        Ok(rooms) => {
+            println!("id                                   name                 on");
+            for  r in rooms.iter() {
+                println!(
+                    "{:2} {:20} {:5}",
+                    r.id,
+                    r.metadata.name,
+                    if r.children.iter().all(|l| l.on.on) {
+                        "all on"
+                    } else if r.children.iter().any(|l| l.on.on) {
+                        "some on"
                     } else {
-                        0
-                    },
-                    if l.group.action.hue.is_some() {
-                        l.group.action.hue.unwrap()
-                    } else {
-                        0
-                    },
-                    if l.group.action.sat.is_some() {
-                        l.group.action.sat.unwrap()
-                    } else {
-                        0
-                    },
-                    if l.group.action.ct.is_some() {
-                        l.group
-                            .action
-                            .ct
-                            .map(|k| if k != 0 { 1000000u32 / (k as u32) } else { 0 })
-                            .unwrap()
-                    } else {
-                        0
-                    },
-                    if l.group.action.xy.is_some() {
-                        l.group.action.xy.unwrap().0
-                    } else {
-                        0.0
-                    },
-                    if l.group.action.xy.is_some() {
-                        l.group.action.xy.unwrap().1
-                    } else {
-                        0.0
+                        "all off"
                     },
                 );
+                for service in &r.services {
+                    println!("  service: {} {}", service.rid, service.rtype);
+                }
             }
         }
         Err(err) => {

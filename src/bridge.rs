@@ -1,146 +1,213 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::str::FromStr;
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-pub struct GroupState {
-    pub all_on: bool,
-    pub any_on: bool,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceIdentifier {
+    pub rid: String,
+    pub rtype: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Group {
+pub struct LightMetadata {
     pub name: String,
-    pub lights: Vec<String>,
-    pub sensors: Vec<String>,
-    pub r#type: String,
-    pub state: GroupState,
-    pub recycle: bool,
-    pub action: LightState,
+    pub archetype: String,
+    pub fixed_mired: Option<u16>,
+    pub function: String,
 }
 
-#[derive(Debug, Clone)]
-pub struct IdentifiedGroup {
-    pub id: usize,
-    pub group: Group,
-}
-
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-pub struct LightState {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct On {
     pub on: bool,
-    pub bri: Option<u8>,
-    pub hue: Option<u16>,
-    pub sat: Option<u8>,
-    pub ct: Option<u16>,
-    pub xy: Option<(f32, f32)>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Dimming {
+    pub brightness: f32,
+    pub min_dim_level: Option<f32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MirekSchema {
+    pub mirek_minimum: u16,
+    pub mirek_maximum: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ColorTemperature {
+    pub mirek: Option<u16>,
+    pub mirek_valid: bool,
+    pub mirek_schema: MirekSchema,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct XY {
+    pub x: f32,
+    pub y: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Gamut {
+    pub red: XY,
+    pub green: XY,
+    pub blue: XY,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Color {
+    pub xy: XY,
+    pub gamut: Option<Gamut>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Light {
-    pub name: String,
-    pub modelid: String,
-    pub swversion: String,
-    pub uniqueid: String,
-    pub state: LightState,
+    pub id: String,
+    pub id_v1: Option<String>,
+    pub metadata: LightMetadata,
+    pub service_id: u32,
+    pub on: On,
+    pub dimming: Option<Dimming>,
+    pub color_temperature: Option<ColorTemperature>,
+    pub color: Option<Color>,
 }
 
-#[derive(Debug, Clone)]
-pub struct IdentifiedLight {
-    pub id: usize,
-    pub light: Light,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Metadata {
+    pub name: String,
+    pub archetype: String,
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Room {
+    pub id: String,
+    pub id_v1: Option<String>,
+    pub metadata: Metadata,
+    pub children: Vec<ResourceIdentifier>,
+    pub services: Vec<ResourceIdentifier>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolvedRoom {
+    pub id: String,
+    pub id_v1: Option<String>,
+    pub metadata: Metadata,
+    pub children: Vec<Light>,
+    pub services: Vec<ResourceIdentifier>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Zone {
+    pub id: String,
+    pub id_v1: Option<String>,
+    pub metadata: Metadata,
+    pub children: Vec<ResourceIdentifier>,
+    pub services: Vec<ResourceIdentifier>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolvedZone {
+    pub id: String,
+    pub id_v1: Option<String>,
+    pub metadata: Metadata,
+    pub children: Vec<Light>,
+    pub services: Vec<ResourceIdentifier>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SceneMetadata {
+    pub name: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Scene {
-    pub name: String,
-    pub r#type: String,
-    pub lights: Vec<String>,
-    pub owner: String,
-    pub recycle: bool,
-    pub locked: bool,
+    pub id: String,
+    pub id_v1: Option<String>,
+    pub metadata: SceneMetadata,
 }
 
-#[derive(Debug, Clone)]
-pub struct IdentifiedScene {
-    pub id: String,
-    pub scene: Scene,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SceneRecall {
+    pub action: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandScene {
+    recall: SceneRecall,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandLightDimming {
+    pub brightness: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandLightColorTemperature {
+    pub mirek: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandLightColor {
+    pub xy: XY,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CommandLightDynamics {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    duration: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    speed: Option<f32>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CommandLight {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub on: Option<bool>,
+    pub on: Option<On>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub bri: Option<u8>,
+    pub dimming: Option<CommandLightDimming>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub hue: Option<u16>,
+    pub color_temperature: Option<CommandLightColorTemperature>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sat: Option<u8>,
+    pub color: Option<CommandLightColor>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub ct: Option<u16>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub xy: Option<(f32, f32)>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub transitiontime: Option<u16>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub alert: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub scene: Option<String>,
+    pub dynamics: Option<CommandLightDynamics>,
 }
 
 impl CommandLight {
-    pub fn on(self) -> CommandLight {
-        CommandLight {
-            on: Some(true),
+    pub fn on(self) -> Self {
+        Self {
+            on: Some(On { on: true }),
             ..self
         }
     }
-    pub fn off(self) -> CommandLight {
-        CommandLight {
-            on: Some(false),
+    pub fn off(self) -> Self {
+        Self {
+            on: Some(On { on: false }),
             ..self
         }
     }
-    pub fn with_bri(self, b: u8) -> CommandLight {
-        CommandLight {
-            bri: Some(b),
+
+    pub fn with_brightness(self, brightness: f32) -> Self {
+        Self {
+            dimming: Some(CommandLightDimming { brightness }),
             ..self
         }
     }
-    pub fn with_hue(self, h: u16) -> CommandLight {
-        CommandLight {
-            hue: Some(h),
+
+    pub fn with_mirek(self, mirek: u16) -> Self {
+        Self {
+            color_temperature: Some(CommandLightColorTemperature { mirek }),
             ..self
         }
     }
-    pub fn with_sat(self, s: u8) -> CommandLight {
-        CommandLight {
-            sat: Some(s),
+
+    pub fn with_xy(self, x: f32, y: f32) -> Self {
+        Self {
+            color: Some(CommandLightColor { xy: XY { x, y } }),
             ..self
         }
     }
-    pub fn with_ct(self, c: u16) -> CommandLight {
-        CommandLight {
-            ct: Some(c),
-            ..self
-        }
-    }
-    pub fn with_xy(self, x: f32, y: f32) -> CommandLight {
-        CommandLight {
-            xy: Some((x, y)),
-            ..self
-        }
-    }
-    pub fn alert(self) -> CommandLight {
-        CommandLight {
-            alert: Some("select".into()),
-            ..self
-        }
-    }
-    pub fn scene(self, s: String) -> CommandLight {
-        CommandLight {
-            scene: Some(s),
+
+    pub fn with_transition_time(self, ms: u32) -> Self {
+        Self {
+            dynamics: Some(CommandLightDynamics { duration: Some(ms), ..Default::default() }),
             ..self
         }
     }
@@ -166,21 +233,21 @@ impl UnauthBridge {
         Bridge {
             ip: self.ip,
             client: create_reqwest_client(Some(&username)),
-            username,
+            application_key: username,
         }
     }
 
-    /// This function registers a new user at the provided brige, using `devicetype` as an
-    /// identifier for that user. It returns an error if the button of the bridge was not pressed
+    /// This function registers a new application at the provided bridge, using `name` as an
+    /// identifier for that app. It returns an error if the button of the bridge was not pressed
     /// shortly before running this function.
     /// ### Example
     /// ```no_run
     /// let mut bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4]);
-    /// let auth_bridge = bridge.register_user("mylaptop").unwrap();
-    /// let key = auth_bridge.username;
+    /// let auth_bridge = bridge.register_application("mylaptop").unwrap();
+    /// let key = auth_bridge.application_key;
     /// // now this key can be stored and reused
     /// ```
-    pub fn register_user(self, devicetype: &str) -> crate::Result<Bridge> {
+    pub fn register_application(self, name: &str) -> crate::Result<Bridge> {
         #[derive(Serialize)]
         struct PostApi {
             devicetype: String,
@@ -190,7 +257,7 @@ impl UnauthBridge {
             username: String,
         }
         let obtain = PostApi {
-            devicetype: devicetype.to_string(),
+            devicetype: name.to_string(),
         };
         let url = format!("https://{}/api", self.ip);
         let resp: BridgeResponse<SuccessResponse<Username>> =
@@ -201,7 +268,7 @@ impl UnauthBridge {
         Ok(Bridge {
             ip: self.ip,
             client: create_reqwest_client(Some(&username)),
-            username,
+            application_key: username,
         })
     }
 }
@@ -213,7 +280,7 @@ pub struct Bridge {
     /// The IP-address of the bridge.
     pub ip: std::net::IpAddr,
     /// This is the username of the currently logged in user.
-    pub username: String,
+    pub application_key: String,
     client: reqwest::blocking::Client,
 }
 
@@ -244,14 +311,14 @@ sFgDAiEA1Fj/C3AN5psFMjo0//mrQebo0eKd3aWRx+pQY08mk48=
         .default_headers({
             let mut headers = reqwest::header::HeaderMap::new();
             if let Some(key) = application_key {
-
-            headers.insert(
-                reqwest::header::HeaderName::from_static("hue-application-key"),
-                reqwest::header::HeaderValue::from_str(key).unwrap(),
-            );
+                headers.insert(
+                    reqwest::header::HeaderName::from_static("hue-application-key"),
+                    reqwest::header::HeaderValue::from_str(key).unwrap(),
+                );
             }
             headers
         })
+        .connection_verbose(true)
         .build()
         .unwrap()
 }
@@ -302,26 +369,26 @@ impl Bridge {
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
     /// ```
-    pub fn with_user(self, username: impl Into<String>) -> Bridge {
+    pub fn with_application_key(self, appplication_key: impl Into<String>) -> Bridge {
         Bridge {
             ip: self.ip,
-            username: username.into(),
+            application_key: appplication_key.into(),
             client: self.client,
         }
     }
 
-    /// This function registers a new user at the provided brige, using `devicetype` as an
-    /// identifier for that user. It returns an error if the button of the bridge was not pressed
+    /// This function registers a new application at the provided bridge, using `name` as an
+    /// identifier for that app. It returns an error if the button of the bridge was not pressed
     /// shortly before running this function.
     /// ### Example
     /// ```no_run
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
-    ///     .register_user("mylaptop")
+    ///     .register_application("mylaptop")
     ///     .unwrap();
     /// // now this username d can be stored and reused
-    /// println!("the password was {}", bridge.username);
+    /// println!("the password was {}", bridge.application_key);
     /// ```
-    pub fn register_user(self, devicetype: &str) -> crate::Result<Bridge> {
+    pub fn register_application(self, name: &str) -> crate::Result<Bridge> {
         #[derive(Serialize)]
         struct PostApi {
             devicetype: String,
@@ -331,7 +398,7 @@ impl Bridge {
             username: String,
         }
         let obtain = PostApi {
-            devicetype: devicetype.to_string(),
+            devicetype: name.to_string(),
         };
         let url = format!("https://{}/api", self.ip);
         let resp: BridgeResponse<SuccessResponse<Username>> =
@@ -340,13 +407,14 @@ impl Bridge {
 
         Ok(Bridge {
             ip: self.ip,
-            username: resp.success.username,
+            application_key: resp.success.username,
             client: self.client,
         })
     }
 
     /// Returns a vector of all lights that are registered at this `Bridge`, sorted by their id's.
     /// This function returns an error if `bridge.username` is `None`.
+    ///
     /// ### Example
     /// ```no_run
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
@@ -355,42 +423,101 @@ impl Bridge {
     ///     println!("{:?}", light);
     /// }
     /// ```
-    pub fn get_all_lights(&self) -> crate::Result<Vec<IdentifiedLight>> {
-        let url = format!("https://{}/api/{}/lights", self.ip, self.username);
-        type Resp = BridgeResponse<HashMap<String, Light>>;
-        let resp: Resp = self.client.get(&url).send()?.json()?;
-        let mut lights = vec![];
-        for (k, light) in resp.get()? {
-            let id = usize::from_str(&k)
-                .map_err(|_| crate::HueError::protocol_err("Light id should be a number"))?;
-            lights.push(IdentifiedLight { id, light });
-        }
+    pub fn get_all_lights(&self) -> crate::Result<Vec<Light>> {
+        let url = format!("https://{}/clip/v2/resource/light", self.ip);
+        let resp: BridgeResponseV2<Light> = self.client.get(&url).send()?.json()?;
+        let mut lights = resp.get()?;
         lights.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(lights)
     }
 
-    /// Returns a vector of all groups that are registered at this `Bridge`, sorted by their id's.
+    pub fn index_all_lights(&self) -> crate::Result<HashMap<String, Light>> {
+        let lights = self.get_all_lights()?;
+        Ok(lights.into_iter().fold(
+            HashMap::new(),
+            |mut map: HashMap<String, Light>, light| {
+                map.insert(light.id.clone(), light);
+                map
+            },
+        ))
+    }
+
+    /// Returns a vector of all rooms that are registered at this `Bridge`, sorted by their id's.
     /// This function returns an error if `bridge.username` is `None`.
     /// ### Example
     /// ```no_run
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
-    /// for group in &bridge.get_all_groups().unwrap() {
-    ///     println!("{:?}", group);
+    /// for room in &bridge.get_all_rooms().unwrap() {
+    ///     println!("{:?}", room);
     /// }
     /// ```
-    pub fn get_all_groups(&self) -> crate::Result<Vec<IdentifiedGroup>> {
-        let url = format!("https://{}/api/{}/groups", self.ip, self.username);
-        type Resp = BridgeResponse<HashMap<String, Group>>;
-        let resp: Resp = self.client.get(&url).send()?.json()?;
-        let mut groups = vec![];
-        for (k, group) in resp.get()? {
-            let id = usize::from_str(&k)
-                .map_err(|_| crate::HueError::protocol_err("Group id should be a number"))?;
-            groups.push(IdentifiedGroup { id, group });
-        }
+    pub fn get_all_rooms(&self) -> crate::Result<Vec<Room>> {
+        let url = format!("https://{}/clip/v2/resource/room", self.ip);
+        let resp: BridgeResponseV2<Room> = self.client.get(&url).send()?.json()?;
+        let mut groups = resp.get()?;
         groups.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(groups)
+    }
+
+    pub fn resolve_all_rooms(&self) -> crate::Result<Vec<ResolvedRoom>> {
+        let rooms = self.get_all_rooms()?;
+
+        let indexed_lights = self.index_all_lights()?;
+
+        Ok(rooms
+            .into_iter()
+            .map(|room: Room| ResolvedRoom {
+                metadata: room.metadata,
+                children: room
+                    .children
+                    .into_iter()
+                    .filter_map(|child| indexed_lights.get(&child.rid).map(|light| light.clone()))
+                    .collect(),
+                id_v1: room.id_v1,
+                id: room.id,
+                services: room.services,
+            })
+            .collect())
+    }
+
+    /// Returns a vector of all zones that are registered at this `Bridge`, sorted by their id's.
+    /// This function returns an error if `bridge.username` is `None`.
+    /// ### Example
+    /// ```no_run
+    /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
+    ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
+    /// for zone in &bridge.get_all_zones().unwrap() {
+    ///     println!("{:?}", zone);
+    /// }
+    /// ```
+    pub fn get_all_zones(&self) -> crate::Result<Vec<Zone>> {
+        let url = format!("https://{}/clip/v2/resource/zone", self.ip);
+        let resp: BridgeResponseV2<Zone> = self.client.get(&url).send()?.json()?;
+        let mut groups = resp.get()?;
+        groups.sort_by(|a, b| a.id.cmp(&b.id));
+        Ok(groups)
+    }
+
+    pub fn resolve_all_zones(&self) -> crate::Result<Vec<ResolvedZone>> {
+        let zones = self.get_all_zones()?;
+
+        let indexed_lights = self.index_all_lights()?;
+
+        Ok(zones
+            .into_iter()
+            .map(|zone: Zone| ResolvedZone {
+                metadata: zone.metadata,
+                children: zone
+                    .children
+                    .into_iter()
+                    .filter_map(|child| indexed_lights.get(&child.rid).map(|light| light.clone()))
+                    .collect(),
+                id_v1: zone.id_v1,
+                id: zone.id,
+                services: zone.services,
+            })
+            .collect())
     }
 
     /// Returns a vector of all scenes that are registered at this `Bridge`, sorted by their id's.
@@ -403,41 +530,46 @@ impl Bridge {
     ///     println!("{:?}", scene);
     /// }
     /// ```
-    pub fn get_all_scenes(&self) -> crate::Result<Vec<IdentifiedScene>> {
-        let url = format!("https://{}/api/{}/scenes", self.ip, self.username);
-        type Resp = BridgeResponse<HashMap<String, Scene>>;
-        let resp: Resp = self.client.get(&url).send()?.json()?;
-        let mut scenes = vec![];
-        for (k, scene) in resp.get()? {
-            scenes.push(IdentifiedScene { id: k, scene });
-        }
+    pub fn get_all_scenes(&self) -> crate::Result<Vec<Scene>> {
+        let url = format!("https://{}/clip/v2/resource/scene", self.ip);
+        let resp: BridgeResponseV2<Scene> = self.client.get(&url).send()?.json()?;
+        let mut scenes = resp.get()?;
         scenes.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(scenes)
     }
 
-    pub fn set_scene(&self, scene: String) -> crate::Result<Value> {
-        let url = format!("https://{}/api/{}/groups/0/action", self.ip, self.username);
-        let command = CommandLight::default().scene(scene);
-        let resp: BridgeResponse<Value> = self.client.put(&url).json(&command).send()?.json()?;
-        resp.get()
+    pub fn set_scene(&self, scene: String) -> crate::Result<()> {
+        let url = format!("https://{}/clip/v2/resource/scene/{}", self.ip, scene);
+        let resp: BridgeResponseV2<Value> = self
+            .client
+            .put(&url)
+            .json(&CommandScene {
+                recall: SceneRecall {
+                    action: "active".to_string(),
+                },
+            })
+            .send()?
+            .json()?;
+        resp.get()?;
+
+        Ok(())
     }
 
-    pub fn set_group_state(&self, group: usize, command: &CommandLight) -> crate::Result<Value> {
+    pub fn set_group_state(&self, group: &str, command: &CommandLight) -> crate::Result<()> {
         let url = format!(
-            "https://{}/api/{}/groups/{}/action",
-            self.ip, self.username, group
+            "https://{}/clip/v2/resource/grouped_light/{}",
+            self.ip, group
         );
-        let resp: BridgeResponse<Value> = self.client.put(&url).json(command).send()?.json()?;
-        resp.get()
+        let resp: BridgeResponseV2<Value> = self.client.put(&url).json(command).send()?.json()?;
+        resp.get()?;
+        Ok(())
     }
 
-    pub fn set_light_state(&self, light: usize, command: &CommandLight) -> crate::Result<Value> {
-        let url = format!(
-            "https://{}/api/{}/lights/{}/state",
-            self.ip, self.username, light
-        );
-        let resp: BridgeResponse<Value> = self.client.put(&url).json(command).send()?.json()?;
-        resp.get()
+    pub fn set_light_state(&self, light: &str, command: &CommandLight) -> crate::Result<()> {
+        let url = format!("https://{}/clip/v2/resource/light/{}", self.ip, light);
+        let resp: BridgeResponseV2<Value> = self.client.put(&url).json(&command).send()?.json()?;
+        resp.get()?;
+        Ok(())
     }
 }
 #[derive(Debug, serde::Deserialize)]
@@ -464,6 +596,29 @@ impl<T> BridgeResponse<T> {
                     msg: error.description,
                 })
             }
+        }
+    }
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct BridgeErrorV2 {
+    description: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct BridgeResponseV2<T> {
+    errors: Vec<BridgeErrorV2>,
+    data: Vec<T>,
+}
+
+impl<T> BridgeResponseV2<T> {
+    fn get(mut self) -> crate::Result<Vec<T>> {
+        if let Some(error) = self.errors.pop() {
+            Err(crate::HueError::BridgeErrorV2 {
+                description: error.description,
+            })
+        } else {
+            Ok(self.data)
         }
     }
 }

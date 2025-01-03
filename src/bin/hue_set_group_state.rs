@@ -17,9 +17,9 @@ fn main() {
         return;
     }
     let bridge = hueclient::Bridge::discover_required().with_user(args[1].to_string());
-    let groups: Vec<usize> = args[2]
+    let group_ids = args[2].clone();
+    let groups: Vec<&str> = group_ids
         .split(",")
-        .map(|s| s.parse::<usize>().unwrap())
         .collect();
     let parsed = hueclient::parse_command(args);
 

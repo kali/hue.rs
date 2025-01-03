@@ -14,9 +14,9 @@ fn main() {
     let bridge = hueclient::Bridge::discover_required().with_user(args[1].to_string());
     match bridge.get_all_scenes() {
         Ok(scenes) => {
-            println!("id name");
+            println!("id                                   name");
             for l in scenes.iter() {
-                println!("{:2} {:40}", l.id, l.scene.name,);
+                println!("{:2} {:40}", l.id, l.metadata.name,);
             }
         }
         Err(err) => {
