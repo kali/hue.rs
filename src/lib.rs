@@ -5,9 +5,9 @@
 //! ### Initial Setup
 //! ```no_run
 //! let bridge = hueclient::Bridge::discover_required()
-//!     .register_user("mycomputer") // Press the bridge before running this
+//!     .register_application("mycomputer") // Press the bridge before running this
 //!     .unwrap();
-//! println!("the username was {}", bridge.username); // handy for later
+//! println!("the username was {}", bridge.application_key); // handy for later
 //! ```
 //! ### Second run
 //! ```no_run
@@ -22,7 +22,7 @@
 //! #   .with_user(USERNAME);
 //! let cmd = hueclient::CommandLight::default().off();
 //! for light in &bridge.get_all_lights().unwrap() {
-//!     bridge.set_light_state(light.id, &cmd).unwrap();
+//!     bridge.set_light_state(&light.id, &cmd).unwrap();
 //! }
 //! ```
 
@@ -32,6 +32,8 @@ pub enum HueError {
     /// Returned when a network error occurs.
     #[error("An error occurred while performing an HTTP request")]
     Reqwest(#[from] reqwest::Error),
+    #[error("An error occurred while creating an event source")]
+    ReqwestEventSource(#[from] reqwest_eventsource::CannotCloneRequestError),
     /// Returned on a JSON failure, which will usually be a problem with deserializing the bridge
     /// response.
     #[error("An error occurred while manipulating JSON")]
@@ -39,9 +41,6 @@ pub enum HueError {
     /// Returned when discovery.meethue.com returns an invalid IP-address.
     #[error("An error occurred while parsing an address")]
     AddrParse(#[from] std::net::AddrParseError),
-    /// Returned when the SSDP probe fails to scan the current network for a bridge.
-    #[error("An error occurred during SSDP discovery")]
-    SSDP(#[from] ssdp_probe::SsdpProbeError),
     /// Returned when the Bridge returns a response that does not confirm to the API spec.
     #[error("A protocol error occurred: {}", msg)]
     ProtocolError {
@@ -55,6 +54,11 @@ pub enum HueError {
         code: usize,
         /// An error message describing the failure.
         msg: String,
+    },
+    #[error("The bridge reported an error: {}", description)]
+    BridgeErrorV2 {
+        /// An error message describing the failure.
+        description: String,
     },
     /// Returned when discovering a bridge in the local network fails.
     #[error("A discovery error occurred: {}", msg)]

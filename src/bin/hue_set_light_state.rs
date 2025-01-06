@@ -4,7 +4,11 @@ extern crate regex;
 use std::env;
 
 #[allow(dead_code)]
-fn main() {
+#[tokio::main]
+async fn main()  {
+    #[cfg(feature = "pretty_env_logger")]
+    pretty_env_logger::init_custom_env("HUE_LOG");
+
     let args: Vec<String> = env::args().collect();
     if args.len() < 4 {
         println!(
@@ -14,15 +18,16 @@ fn main() {
         return;
     }
     let bridge = hueclient::Bridge::discover_required().with_user(args[1].to_string());
-    let ref lights: Vec<usize> = args[2]
+
+    let light_ids = args[2].clone();
+    let lights: Vec<&str> = light_ids
         .split(",")
-        .map(|s| s.parse::<usize>().unwrap())
         .collect();
     let parsed = hueclient::parse_command(args);
 
     println!("lights: {:?}", lights);
     for l in lights.iter() {
-        println!("{:?}", bridge.set_light_state(*l, &parsed));
+        println!("{:?}", bridge.set_light_state(*l, &parsed).await);
         std::thread::sleep(::std::time::Duration::from_millis(50))
     }
 }
