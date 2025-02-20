@@ -4,10 +4,13 @@
 //! A short overview of the most common use cases of this library.
 //! ### Initial Setup
 //! ```no_run
+//! # tokio_test::block_on(async {
 //! let bridge = hueclient::Bridge::discover_required()
 //!     .register_application("mycomputer") // Press the bridge before running this
+//!     .await
 //!     .unwrap();
 //! println!("the username was {}", bridge.application_key); // handy for later
+//! # })
 //! ```
 //! ### Second run
 //! ```no_run
@@ -17,13 +20,15 @@
 //! ```
 //! ### Good night
 //! ```no_run
+//! # tokio_test::block_on(async {
 //! # const USERNAME: &str = "the username that was generated in the previous example";
 //! # let bridge = hueclient::Bridge::discover_required()
 //! #   .with_user(USERNAME);
 //! let cmd = hueclient::CommandLight::default().off();
-//! for light in &bridge.get_all_lights().unwrap() {
-//!     bridge.set_light_state(&light.id, &cmd).unwrap();
+//! for light in &bridge.get_all_lights().await.unwrap() {
+//!     bridge.set_light_state(&light.id, &cmd).await.unwrap();
 //! }
+//! # })
 //! ```
 
 /// Represents any of the ways that usage of this library may fail.
