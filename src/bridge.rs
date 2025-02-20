@@ -285,10 +285,12 @@ impl UnauthBridge {
     /// shortly before running this function.
     /// ### Example
     /// ```no_run
+    /// # tokio_test::block_on(async {
     /// let mut bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4]);
-    /// let auth_bridge = bridge.register_application("mylaptop").unwrap();
+    /// let auth_bridge = bridge.register_application("mylaptop").await.unwrap();
     /// let key = auth_bridge.application_key;
     /// // now this key can be stored and reused
+    /// # })
     /// ```
     pub async fn register_application(self, name: &str) -> crate::Result<Bridge> {
         #[derive(Serialize)]
@@ -425,11 +427,14 @@ impl Bridge {
     /// shortly before running this function.
     /// ### Example
     /// ```no_run
+    /// # tokio_test::block_on(async {
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///     .register_application("mylaptop")
+    ///     .await
     ///     .unwrap();
     /// // now this username d can be stored and reused
     /// println!("the password was {}", bridge.application_key);
+    /// # })
     /// ```
     pub async fn register_application(self, name: &str) -> crate::Result<Bridge> {
         #[derive(Serialize)]
@@ -460,11 +465,13 @@ impl Bridge {
     ///
     /// ### Example
     /// ```no_run
+    /// # tokio_test::block_on(async {
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
-    /// for device in &bridge.get_all_devices().unwrap() {
+    /// for device in &bridge.get_all_devices().await.unwrap() {
     ///     println!("{:?}", device);
     /// }
+    /// # })
     /// ```
     pub async fn get_all_devices(&self) -> crate::Result<Vec<Device>> {
         let url = format!("https://{}/clip/v2/resource/device", self.ip);
@@ -484,11 +491,13 @@ impl Bridge {
     ///
     /// ### Example
     /// ```no_run
+    /// # tokio_test::block_on(async {
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
-    /// for light in &bridge.get_all_lights().unwrap() {
+    /// for light in &bridge.get_all_lights().await.unwrap() {
     ///     println!("{:?}", light);
     /// }
+    /// # })
     /// ```
     pub async fn get_all_lights(&self) -> crate::Result<Vec<Light>> {
         let url = format!("https://{}/clip/v2/resource/light", self.ip);
@@ -513,11 +522,13 @@ impl Bridge {
     /// This function returns an error if `bridge.username` is `None`.
     /// ### Example
     /// ```no_run
+    /// # tokio_test::block_on(async {
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
-    /// for room in &bridge.get_all_rooms().unwrap() {
+    /// for room in &bridge.get_all_rooms().await.unwrap() {
     ///     println!("{:?}", room);
     /// }
+    /// # })
     /// ```
     pub async fn get_all_rooms(&self) -> crate::Result<Vec<Room>> {
         let url = format!("https://{}/clip/v2/resource/room", self.ip);
@@ -562,11 +573,13 @@ impl Bridge {
     /// This function returns an error if `bridge.username` is `None`.
     /// ### Example
     /// ```no_run
+    /// # tokio_test::block_on(async {
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
-    /// for zone in &bridge.get_all_zones().unwrap() {
+    /// for zone in &bridge.get_all_zones().await.unwrap() {
     ///     println!("{:?}", zone);
     /// }
+    /// # })
     /// ```
     pub async fn get_all_zones(&self) -> crate::Result<Vec<Zone>> {
         let url = format!("https://{}/clip/v2/resource/zone", self.ip);
@@ -601,11 +614,13 @@ impl Bridge {
     /// This function returns an error if `bridge.username` is `None`.
     /// ### Example
     /// ```no_run
+    /// # tokio_test::block_on(async {
     /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
     ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
-    /// for scene in &bridge.get_all_scenes().unwrap() {
+    /// for scene in &bridge.get_all_scenes().await.unwrap() {
     ///     println!("{:?}", scene);
     /// }
+    /// # })
     /// ```
     pub async fn get_all_scenes(&self) -> crate::Result<Vec<Scene>> {
         let url = format!("https://{}/clip/v2/resource/scene", self.ip);
