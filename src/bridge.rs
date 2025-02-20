@@ -12,6 +12,28 @@ pub struct ResourceIdentifier {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Device {
+    pub id: String,
+    pub id_v1: Option<String>,
+    pub services: Vec<ResourceIdentifier>,
+}
+
+impl Device {
+    /// Returns the ids of all services of type light associated with this device.
+    pub fn get_lights(&self) -> impl Iterator<Item = &str> {
+        self.services
+            .iter()
+            .filter_map(|service| {
+                if service.rtype == "light" {
+                    Some(service.rid.as_str())
+                } else {
+                    None
+                }
+            })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LightMetadata {
     pub name: String,
     pub archetype: String,
@@ -433,6 +455,30 @@ impl Bridge {
         })
     }
 
+    /// Returns a vector of all devices that are registered at this `Bridge`, sorted by their id's.
+    /// This function returns an error if `bridge.username` is `None`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let bridge = hueclient::Bridge::for_ip([192u8, 168, 0, 4])
+    ///    .with_user("rVV05G0i52vQMMLn6BK3dpr0F3uDiqtDjPLPK2uj");
+    /// for device in &bridge.get_all_devices().unwrap() {
+    ///     println!("{:?}", device);
+    /// }
+    /// ```
+    pub async fn get_all_devices(&self) -> crate::Result<Vec<Device>> {
+        let url = format!("https://{}/clip/v2/resource/device", self.ip);
+        let resp: BridgeResponseV2<Device> = self.client.get(&url).send().await?.json().await?;
+        let mut devices = resp.get()?;
+        devices.sort_by(|a, b| a.id.cmp(&b.id));
+        Ok(devices)
+    }
+
+    pub async fn index_all_devices(&self) -> crate::Result<HashMap<String, Device>> {
+        let devices = self.get_all_devices().await?;
+        Ok(devices.into_iter().map(|device| (device.id.clone(), device)).collect())
+    }
+
     /// Returns a vector of all lights that are registered at this `Bridge`, sorted by their id's.
     /// This function returns an error if `bridge.username` is `None`.
     ///
@@ -484,6 +530,7 @@ impl Bridge {
     pub async fn resolve_all_rooms(&self) -> crate::Result<Vec<ResolvedRoom>> {
         let rooms = self.get_all_rooms().await?;
 
+        let indexed_devices = self.index_all_devices().await?;
         let indexed_lights = self.index_all_lights().await?;
 
         Ok(rooms
@@ -493,7 +540,16 @@ impl Bridge {
                 children: room
                     .children
                     .into_iter()
-                    .filter_map(|child| indexed_lights.get(&child.rid).map(|light| light.clone()))
+                    .flat_map(|child| {
+                        indexed_devices.get(&child.rid).map_or(vec![], |device| {
+                            device
+                                .get_lights()
+                                .filter_map(|light_id| {
+                                    indexed_lights.get(light_id).map(|light| light.clone())
+                                })
+                                .collect()
+                        })
+                    })
                     .collect(),
                 id_v1: room.id_v1,
                 id: room.id,
