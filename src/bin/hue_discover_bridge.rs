@@ -7,6 +7,6 @@ async fn main() {
     #[cfg(feature = "pretty_env_logger")]
     pretty_env_logger::init_custom_env("HUE_LOG");
 
-    let bridge = Bridge::discover().unwrap();
+    let bridge = Bridge::discover().await.unwrap();
     println!("Hue bridge found: {:?}", bridge);
 }

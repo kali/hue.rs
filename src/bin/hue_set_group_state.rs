@@ -17,7 +17,9 @@ async fn main() {
         );
         return;
     }
-    let bridge = hueclient::Bridge::discover_required().with_user(args[1].to_string());
+    let bridge = hueclient::Bridge::discover_required()
+        .await
+        .with_user(args[1].to_string());
     let group_ids = args[2].clone();
     let groups: Vec<&str> = group_ids.split(",").collect();
     let parsed = hueclient::parse_command(args);

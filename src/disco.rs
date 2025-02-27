@@ -7,7 +7,7 @@ use std::{net::IpAddr, time::Duration};
 
 // As Per instrucitons at
 // https://developers.meethue.com/develop/application-design-guidance/hue-bridge-discovery/
-pub fn discover_hue_bridge() -> Result<IpAddr, HueError> {
+pub async fn discover_hue_bridge() -> Result<IpAddr, HueError> {
     let bridge_ftr = discover_hue_bridge_m_dns();
     let bridge = block_on(bridge_ftr);
     match bridge {
@@ -20,7 +20,7 @@ pub fn discover_hue_bridge() -> Result<IpAddr, HueError> {
                 "Error in mDNS discovery: {}, falling back to n-upnp",
                 mdns_error
             );
-            let n_upnp_result = discover_hue_bridge_n_upnp();
+            let n_upnp_result = discover_hue_bridge_n_upnp().await;
             match n_upnp_result {
                 Ok(bridge_ip) => {
                     log::info!("discovered bridge at {bridge_ip} using n-upnp");
@@ -37,9 +37,11 @@ pub fn discover_hue_bridge() -> Result<IpAddr, HueError> {
     }
 }
 
-pub fn discover_hue_bridge_n_upnp() -> Result<IpAddr, HueError> {
-    let objects: Vec<Map<String, Value>> =
-        reqwest::blocking::get("https://discovery.meethue.com/")?.json()?;
+pub async fn discover_hue_bridge_n_upnp() -> Result<IpAddr, HueError> {
+    let objects: Vec<Map<String, Value>> = reqwest::get("https://discovery.meethue.com/")
+        .await?
+        .json()
+        .await?;
 
     if objects.is_empty() {
         Err(DiscoveryError {
@@ -111,10 +113,10 @@ fn to_ip_addr(record: &Record) -> Option<IpAddr> {
 mod tests {
     use super::*;
 
-    #[test]
+    #[tokio::test]
     #[ignore]
-    fn test_discover_hue_bridge() {
-        let ip = discover_hue_bridge();
+    async fn test_discover_hue_bridge() {
+        let ip = discover_hue_bridge().await;
         assert!(ip.is_ok());
         let ip = ip.unwrap();
         assert_eq!(ip.to_string(), "192.168.1.149");
