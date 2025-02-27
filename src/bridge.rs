@@ -393,8 +393,9 @@ impl Bridge {
     /// ```no_run
     /// let maybe_bridge = hueclient::Bridge::discover();
     /// ```
-    pub fn discover() -> Option<UnauthBridge> {
+    pub async fn discover() -> Option<UnauthBridge> {
         crate::disco::discover_hue_bridge()
+            .await
             .ok()
             .map(|ip| UnauthBridge {
                 ip,
@@ -409,8 +410,8 @@ impl Bridge {
     /// ```
     /// ### Panics
     /// This function panics if there is no brige present.
-    pub fn discover_required() -> UnauthBridge {
-        Self::discover().expect("No bridge found!")
+    pub async fn discover_required() -> UnauthBridge {
+        Self::discover().await.expect("No bridge found!")
     }
 
     /// Consumes the bidge and return a new one with a configured username.

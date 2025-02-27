@@ -17,7 +17,9 @@ async fn main() {
         );
         return;
     }
-    let bridge = hueclient::Bridge::discover_required().with_user(args[1].to_string());
+    let bridge = hueclient::Bridge::discover_required()
+        .await
+        .with_user(args[1].to_string());
 
     let light_ids = args[2].clone();
     let lights: Vec<&str> = light_ids.split(",").collect();
