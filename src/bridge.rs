@@ -1,9 +1,9 @@
+use futures::Stream;
+use futures::StreamExt;
+use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use futures::Stream;
-use futures::StreamExt;
-use reqwest::{Method};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceIdentifier {
@@ -21,15 +21,13 @@ pub struct Device {
 impl Device {
     /// Returns the ids of all services of type light associated with this device.
     pub fn get_lights(&self) -> impl Iterator<Item = &str> {
-        self.services
-            .iter()
-            .filter_map(|service| {
-                if service.rtype == "light" {
-                    Some(service.rid.as_str())
-                } else {
-                    None
-                }
-            })
+        self.services.iter().filter_map(|service| {
+            if service.rtype == "light" {
+                Some(service.rid.as_str())
+            } else {
+                None
+            }
+        })
     }
 }
 
@@ -100,7 +98,6 @@ pub struct Metadata {
     pub name: String,
     pub archetype: String,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Room {
@@ -233,12 +230,14 @@ impl CommandLight {
 
     pub fn with_transition_time(self, ms: u32) -> Self {
         Self {
-            dynamics: Some(CommandLightDynamics { duration: Some(ms), ..Default::default() }),
+            dynamics: Some(CommandLightDynamics {
+                duration: Some(ms),
+                ..Default::default()
+            }),
             ..self
         }
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EventColorTemperature {
@@ -305,8 +304,14 @@ impl UnauthBridge {
             devicetype: name.to_string(),
         };
         let url = format!("https://{}/api", self.ip);
-        let resp: BridgeResponse<SuccessResponse<Username>> =
-            self.client.post(&url).json(&obtain).send().await?.json().await?;
+        let resp: BridgeResponse<SuccessResponse<Username>> = self
+            .client
+            .post(&url)
+            .json(&obtain)
+            .send()
+            .await?
+            .json()
+            .await?;
         let resp = resp.get()?;
 
         let username = resp.success.username;
@@ -449,8 +454,14 @@ impl Bridge {
             devicetype: name.to_string(),
         };
         let url = format!("https://{}/api", self.ip);
-        let resp: BridgeResponse<SuccessResponse<Username>> =
-            self.client.post(&url).json(&obtain).send().await?.json().await?;
+        let resp: BridgeResponse<SuccessResponse<Username>> = self
+            .client
+            .post(&url)
+            .json(&obtain)
+            .send()
+            .await?
+            .json()
+            .await?;
         let resp = resp.get()?;
 
         Ok(Bridge {
@@ -483,7 +494,10 @@ impl Bridge {
 
     pub async fn index_all_devices(&self) -> crate::Result<HashMap<String, Device>> {
         let devices = self.get_all_devices().await?;
-        Ok(devices.into_iter().map(|device| (device.id.clone(), device)).collect())
+        Ok(devices
+            .into_iter()
+            .map(|device| (device.id.clone(), device))
+            .collect())
     }
 
     /// Returns a vector of all lights that are registered at this `Bridge`, sorted by their id's.
@@ -509,13 +523,12 @@ impl Bridge {
 
     pub async fn index_all_lights(&self) -> crate::Result<HashMap<String, Light>> {
         let lights = self.get_all_lights().await?;
-        Ok(lights.into_iter().fold(
-            HashMap::new(),
-            |mut map: HashMap<String, Light>, light| {
+        Ok(lights
+            .into_iter()
+            .fold(HashMap::new(), |mut map: HashMap<String, Light>, light| {
                 map.insert(light.id.clone(), light);
                 map
-            },
-        ))
+            }))
     }
 
     /// Returns a vector of all rooms that are registered at this `Bridge`, sorted by their id's.
@@ -555,9 +568,7 @@ impl Bridge {
                         indexed_devices.get(&child.rid).map_or(vec![], |device| {
                             device
                                 .get_lights()
-                                .filter_map(|light_id| {
-                                    indexed_lights.get(light_id).map(|light| light.clone())
-                                })
+                                .filter_map(|light_id| indexed_lights.get(light_id).cloned())
                                 .collect()
                         })
                     })
@@ -601,7 +612,7 @@ impl Bridge {
                 children: zone
                     .children
                     .into_iter()
-                    .filter_map(|child| indexed_lights.get(&child.rid).map(|light| light.clone()))
+                    .filter_map(|child| indexed_lights.get(&child.rid).cloned())
                     .collect(),
                 id_v1: zone.id_v1,
                 id: zone.id,
@@ -640,8 +651,10 @@ impl Bridge {
                     action: "active".to_string(),
                 },
             })
-            .send().await?
-            .json().await?;
+            .send()
+            .await?
+            .json()
+            .await?;
         resp.get()?;
 
         Ok(())
@@ -652,47 +665,67 @@ impl Bridge {
             "https://{}/clip/v2/resource/grouped_light/{}",
             self.ip, group
         );
-        let resp: BridgeResponseV2<Value> = self.client.put(&url).json(command).send().await?.json().await?;
+        let resp: BridgeResponseV2<Value> = self
+            .client
+            .put(&url)
+            .json(command)
+            .send()
+            .await?
+            .json()
+            .await?;
         resp.get()?;
         Ok(())
     }
 
     pub async fn set_light_state(&self, light: &str, command: &CommandLight) -> crate::Result<()> {
         let url = format!("https://{}/clip/v2/resource/light/{}", self.ip, light);
-        let resp: BridgeResponseV2<Value> = self.client.put(&url).json(&command).send().await?.json().await?;
+        let resp: BridgeResponseV2<Value> = self
+            .client
+            .put(&url)
+            .json(&command)
+            .send()
+            .await?
+            .json()
+            .await?;
         resp.get()?;
         Ok(())
     }
 
     pub fn events(&self) -> crate::Result<impl Stream<Item = HueEvent>> {
-        let request_builder = self.client.request(Method::GET, &format!("https://{}/eventstream/clip/v2", self.ip));
-        Ok(reqwest_eventsource::EventSource::new(request_builder)?.filter_map( |event| async {
-            log::debug!("event {:?}", event);
-            match event {
-                Ok(reqwest_eventsource::Event::Message(msg)) => {
-                    log::debug!("message {:?}", msg.data);
-                    match serde_json::from_str::<Vec<EventEnvelope>>(&msg.data) {
-                        Ok(mut event) => Some(HueEvent::Event {data : event.pop().unwrap().data}),
-                        Err(e) => Some(HueEvent::Error(format!("{:?}", e)))
+        let request_builder = self.client.request(
+            Method::GET,
+            format!("https://{}/eventstream/clip/v2", self.ip),
+        );
+        Ok(
+            reqwest_eventsource::EventSource::new(request_builder)?.filter_map(|event| async {
+                log::debug!("event {:?}", event);
+                match event {
+                    Ok(reqwest_eventsource::Event::Message(msg)) => {
+                        log::debug!("message {:?}", msg.data);
+                        match serde_json::from_str::<Vec<EventEnvelope>>(&msg.data) {
+                            Ok(mut event) => Some(HueEvent::Event {
+                                data: event.pop().unwrap().data,
+                            }),
+                            Err(e) => Some(HueEvent::Error(format!("{:?}", e))),
+                        }
                     }
-
+                    Ok(reqwest_eventsource::Event::Open) => None,
+                    Err(e) => Some(HueEvent::Error(format!("{:?}", e))),
                 }
-                Ok(reqwest_eventsource::Event::Open) => None,
-                Err(e) => Some(HueEvent::Error(format!("{:?}", e)))
-            }
-        }))
+            }),
+        )
     }
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
 struct EventEnvelope {
-    data: Vec<Event>
+    data: Vec<Event>,
 }
 
 #[derive(Debug, Clone)]
 pub enum HueEvent {
-    Event {data : Vec<Event>},
-    Error(String)
+    Event { data: Vec<Event> },
+    Error(String),
 }
 
 #[derive(Debug, serde::Deserialize)]

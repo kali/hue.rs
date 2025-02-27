@@ -3,7 +3,7 @@ use std::env;
 
 #[allow(dead_code)]
 #[tokio::main]
-async fn main()  {
+async fn main() {
     #[cfg(feature = "pretty_env_logger")]
     pretty_env_logger::init_custom_env("HUE_LOG");
 
@@ -17,7 +17,7 @@ async fn main()  {
     match bridge.resolve_all_rooms().await {
         Ok(rooms) => {
             println!("id                                   name                 on");
-            for  r in rooms.iter() {
+            for r in rooms.iter() {
                 println!(
                     "{:2} {:20} {:5}",
                     r.id,
@@ -45,7 +45,7 @@ async fn main()  {
     match bridge.resolve_all_zones().await {
         Ok(rooms) => {
             println!("id                                   name                 on");
-            for  r in rooms.iter() {
+            for r in rooms.iter() {
                 println!(
                     "{:2} {:20} {:5}",
                     r.id,

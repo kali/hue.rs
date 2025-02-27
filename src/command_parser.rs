@@ -1,4 +1,4 @@
-use crate::{CommandLight};
+use crate::CommandLight;
 use regex::Regex;
 
 pub fn parse_command(args: Vec<String>) -> CommandLight {
@@ -27,7 +27,7 @@ pub fn parse_command(args: Vec<String>) -> CommandLight {
             let caps = re_mired.captures(command).unwrap();
             let mut command = CommandLight::default().on();
             if let Some(mirek) = caps.get(1).and_then(|s| s.as_str().parse::<u16>().ok()) {
-                command= command.with_mirek(mirek)
+                command = command.with_mirek(mirek)
             }
             if let Some(brightness) = caps.get(2).and_then(|s| s.as_str().parse::<f32>().ok()) {
                 command = command.with_brightness(brightness)
@@ -38,7 +38,7 @@ pub fn parse_command(args: Vec<String>) -> CommandLight {
             log::debug!("Kelvin: {command}");
             let caps = re_kelvin.captures(command).unwrap();
             let mut command = CommandLight::default().on();
-            if let Some(mirek) =  caps.get(1).and_then(|s| {
+            if let Some(mirek) = caps.get(1).and_then(|s| {
                 s.as_str()
                     .parse::<u32>()
                     .ok()
@@ -74,7 +74,7 @@ pub fn parse_command(args: Vec<String>) -> CommandLight {
             let x = caps.get(1).unwrap().as_str().parse::<f32>().unwrap();
             let y = caps.get(2).unwrap().as_str().parse::<f32>().unwrap();
             command = command.with_xy(x, y);
-            if let Some(bri) = caps.get(4).and_then(|s| s.as_str().parse::<f32>().ok())  {
+            if let Some(bri) = caps.get(4).and_then(|s| s.as_str().parse::<f32>().ok()) {
                 command = command.with_brightness(bri);
             }
             command
@@ -82,7 +82,7 @@ pub fn parse_command(args: Vec<String>) -> CommandLight {
         _ => panic!("can not understand command {:?}", command),
     };
     if args.len() == 5 {
-        if let Some(ms) = args[4].parse::<u32>().ok() {
+        if let Ok(ms) = args[4].parse::<u32>() {
             parsed = parsed.with_transition_time(ms);
         }
     }
