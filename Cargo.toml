@@ -7,7 +7,7 @@ description = "Rust library for Philips Hue lights"
 homepage = "http://github.com/kali/hue.rs"
 repository = "http://github.com/kali/hue.rs"
 readme = "README.md"
-license = "WTFPL"
+license = "MIT OR Apache-2.0"
 keywords = [ "Philips", "hue", "light", "bulb" ]
 edition = "2021"
 
