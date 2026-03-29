@@ -4,6 +4,9 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::time::Duration;
+
+use crate::HueError;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourceIdentifier {
@@ -16,6 +19,11 @@ pub struct Device {
     pub id: String,
     pub id_v1: Option<String>,
     pub services: Vec<ResourceIdentifier>,
+    pub metadata: DeviceMetadata,
+    pub product_data: DeviceProductData,
+    pub identify: Option<Value>,
+    pub usertest: Option<Value>,
+    pub device_mode: Option<Value>,
 }
 
 impl Device {
@@ -31,6 +39,33 @@ impl Device {
     }
 }
 
+/// Additional metadata including a user given name
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceMetadata {
+    /// Human readable name of a resource
+    pub name: String,
+    /// By default archetype given by manufacturer. Can be changed by user.
+    pub archetype: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeviceProductData {
+    /// unique identification of device model
+    pub model_id: String,
+    /// Name of device manufacturer
+    pub manufacturer_name: String,
+    /// Name of the product
+    pub product_name: String,
+    /// Archetype of the product
+    pub product_archetype: String,
+    /// This device is Hue certified
+    pub certified: bool,
+    /// Software version of the product
+    pub software_version: String,
+    /// Hardware type; identified by Manufacturer code and ImageType
+    pub hardware_platform_type: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LightMetadata {
     pub name: String,
@@ -39,10 +74,6 @@ pub struct LightMetadata {
     pub function: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct On {
-    pub on: bool,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Dimming {
@@ -63,9 +94,12 @@ pub struct ColorTemperature {
     pub mirek_schema: MirekSchema,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// CIE XY gamut position
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
 pub struct XY {
+    // X position in color gamut
     pub x: f32,
+    // Y position in color gamut
     pub y: f32,
 }
 
@@ -83,20 +117,80 @@ pub struct Color {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Light {
+    /// Unique identifier representing a specific resource instance
     pub id: String,
+    /// Clip v1 resource identifier
     pub id_v1: Option<String>,
+    /// additional metadata including a user given name
     pub metadata: LightMetadata,
+    /// Service identification number. 0 indicates service of a single instance
     pub service_id: u32,
     pub on: On,
     pub dimming: Option<Dimming>,
     pub color_temperature: Option<ColorTemperature>,
     pub color: Option<Color>,
+    pub owner: ResourceIdentifier,
+    pub r#type: String,
+    pub product_data: Option<Value>,
+    pub identify: Value,
+    pub dynamics: LightDynamics,
+    pub effects_v2: Option<Value>,
+    /// Deprecated: use effects_v2
+    pub effects: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Metadata {
     pub name: String,
     pub archetype: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LightDynamics {
+    /// Current status of the lamp with dynamics.
+    pub status: String,
+    /// Statuses in which a lamp could be when playing dynamics.
+    pub status_values: Vec<String>,
+    /// speed of dynamic palette. The speed is only valid if the status is dynamic_palette.
+    pub speed: Value,
+    /// Indicates whether the value presented in speed is valid
+    pub speed_valid: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LightLevelGet {
+    /// Unique identifier representing a specific resource instance
+    pub id: String,
+    /// Clip v1 resource identifier
+    pub id_v1: Option<String>,
+    /// Owner of the service, in case the owner service is deleted, the service also gets deleted
+    pub owner: ResourceIdentifier,
+    /// true when sensor is activated, false when deactivated
+    pub enabled: bool,
+    pub light: LightLevelLight,
+    /// Type of the supported resources
+    pub r#type: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LightLevelLight {
+    /// Deprecated. Moved to light_level_report/light_level
+    pub light_level: usize,
+    /// Deprecated. Indication whether the value presented in light_level is valid
+    pub light_level_valid: bool,
+    pub light_level_report: LightLevelLightReport,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LightLevelLightReport {
+    /// last time the value of this property is changed.
+    pub changed: String,
+    /// Light level in 10000*log10(lux) +1 measured by
+    /// sensor. Logarithmic scale used because the human eye adjusts
+    /// to light levels and small changes at low lux levels are more
+    /// noticeable than at high lux levels. This allows use of linear
+    /// scale configuration sliders.
+    pub light_level: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -115,6 +209,55 @@ pub struct ResolvedRoom {
     pub metadata: Metadata,
     pub children: Vec<Light>,
     pub services: Vec<ResourceIdentifier>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MotionGet {
+    /// Unique identifier representing a specific resource instance
+    pub id: String,
+    /// Clip v1 resource identifier
+    pub id_v1: Option<String>,
+    /// Owner of the service, in case the owner service is deleted, the service also gets deleted
+    pub owner: ResourceIdentifier,
+    /// true when sensor is activated, false when deactivated
+    pub enabled: bool,
+    pub motion: Motion,
+    pub sensitivity: MotionSensitivity,
+    /// Type of the supported resources
+    pub r#type: Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Motion {
+    // #[deprecated]
+    // /// Deprecated. Moved to motion_report/motion.
+    // pub motion: Option<bool>,
+    // #[deprecated]
+    // /// Deprecated. Motion is valid when motion_report property is present, invalid when absent.
+    // pub motion_valid: Option<bool>,
+    pub motion_report: MotionReport,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MotionReport {
+    /// last time the value of this property is changed.
+    pub changed: String,
+    /// true if motion is detected
+    pub motion: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MotionSensitivity {
+    pub status: Value,
+    /// Sensitivity of the sensor. Value in the range 0 to sensitivity_max.
+    pub sensitivity: i32,
+    /// Maximum value of the sensitivity configuration attribute.
+    pub sensitivity_max: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
+pub struct On {
+    /// On/Off state of the light on=true, off=false
+    pub on: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -157,29 +300,35 @@ pub struct CommandScene {
     recall: SceneRecall,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
 pub struct CommandLightDimming {
     pub brightness: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
 pub struct CommandLightColorTemperature {
     pub mirek: u16,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
 pub struct CommandLightColor {
     pub xy: XY,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, PartialOrd)]
 pub struct CommandLightDynamics {
     #[serde(skip_serializing_if = "Option::is_none")]
     duration: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     speed: Option<f32>,
 }
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, PartialOrd)]
+pub struct CommandLightEffectsV2Action {
+    pub effect: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, PartialOrd)]
 pub struct CommandLight {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub on: Option<On>,
@@ -191,6 +340,8 @@ pub struct CommandLight {
     pub color: Option<CommandLightColor>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dynamics: Option<CommandLightDynamics>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effects_v2: Option<CommandLightEffectsV2Action>,
 }
 
 impl CommandLight {
@@ -237,6 +388,13 @@ impl CommandLight {
             ..self
         }
     }
+
+    pub fn with_effect_v2(self, effect: String) -> Self {
+        Self {
+            effects_v2: Some(CommandLightEffectsV2Action { effect }),
+            ..self
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -246,13 +404,30 @@ pub struct EventColorTemperature {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EventContactReport {
+    pub changed: String,
+    pub state: EventContactReportState,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EventContactReportState {
+    Contact,
+    NoContact,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
+    pub r#type: String,
     pub id: String,
     pub id_v1: Option<String>,
     pub on: Option<On>,
     pub dimming: Option<CommandLightDimming>,
     pub color_temperature: Option<EventColorTemperature>,
     pub color: Option<CommandLightColor>,
+    pub motion: Option<Motion>,
+    pub owner: Option<ResourceIdentifier>,
+    pub contact_report: Option<EventContactReport>,
 }
 
 /// An unauthenticated bridge is a bridge that has not
@@ -304,21 +479,23 @@ impl UnauthBridge {
             devicetype: name.to_string(),
         };
         let url = format!("https://{}/api", self.ip);
-        let resp: BridgeResponse<SuccessResponse<Username>> = self
+        let resp = self
             .client
             .post(&url)
             .json(&obtain)
             .send()
             .await?
-            .json()
+            .text()
             .await?;
-        let resp = resp.get()?;
 
-        let username = resp.success.username;
+        let resp =
+            serde_json::from_str::<BridgeResponse<SuccessResponse<Username>>>(&resp)?.get()?;
+
+        let application_key = resp.success.username;
         Ok(Bridge {
             ip: self.ip,
-            client: create_reqwest_client(Some(&username)),
-            application_key: username,
+            client: create_reqwest_client(Some(&application_key)),
+            application_key,
         })
     }
 }
@@ -336,6 +513,9 @@ pub struct Bridge {
 
 fn create_reqwest_client(application_key: Option<&str>) -> reqwest::Client {
     reqwest::Client::builder()
+        .http2_prior_knowledge()
+        .http2_keep_alive_interval(Duration::from_secs(5))
+        .http2_keep_alive_while_idle(true)
         // see https://developers.meethue.com/develop/application-design-guidance/using-https/
         .add_root_certificate(
             reqwest::Certificate::from_pem(
@@ -455,15 +635,19 @@ impl Bridge {
             devicetype: name.to_string(),
         };
         let url = format!("https://{}/api", self.ip);
-        let resp: BridgeResponse<SuccessResponse<Username>> = self
+        let resp = self
             .client
             .post(&url)
             .json(&obtain)
             .send()
             .await?
-            .json()
+            .text()
             .await?;
-        let resp = resp.get()?;
+
+        dbg!(&resp);
+
+        let resp =
+            serde_json::from_str::<BridgeResponse<SuccessResponse<Username>>>(&resp)?.get()?;
 
         Ok(Bridge {
             ip: self.ip,
@@ -514,6 +698,12 @@ impl Bridge {
     /// }
     /// # })
     /// ```
+    pub async fn get_light(&self, id: &str) -> crate::Result<Light> {
+        let url = format!("https://{}/clip/v2/resource/light/{}", self.ip, id);
+        let resp: Light = self.client.get(&url).send().await?.json().await?;
+        Ok(resp)
+    }
+
     pub async fn get_all_lights(&self) -> crate::Result<Vec<Light>> {
         let url = format!("https://{}/clip/v2/resource/light", self.ip);
         let resp: BridgeResponseV2<Light> = self.client.get(&url).send().await?.json().await?;
@@ -550,6 +740,14 @@ impl Bridge {
         let mut groups = resp.get()?;
         groups.sort_by(|a, b| a.id.cmp(&b.id));
         Ok(groups)
+    }
+
+    pub async fn get_all_motion(&self) -> crate::Result<Vec<MotionGet>> {
+        let url = format!("https://{}/clip/v2/resource/motion", self.ip);
+        let resp: BridgeResponseV2<MotionGet> = self.client.get(&url).send().await?.json().await?;
+        let mut motions = resp.get()?;
+        motions.sort_by(|a, b| a.id.cmp(&b.id));
+        Ok(motions)
     }
 
     pub async fn resolve_all_rooms(&self) -> crate::Result<Vec<ResolvedRoom>> {
@@ -680,16 +878,26 @@ impl Bridge {
 
     pub async fn set_light_state(&self, light: &str, command: &CommandLight) -> crate::Result<()> {
         let url = format!("https://{}/clip/v2/resource/light/{}", self.ip, light);
-        let resp: BridgeResponseV2<Value> = self
-            .client
-            .put(&url)
-            .json(&command)
-            .send()
-            .await?
-            .json()
-            .await?;
-        resp.get()?;
-        Ok(())
+        let resp = self.client.put(&url).json(&command).send().await?;
+        if resp.status().is_success() {
+            let resp: BridgeResponseV2<Value> = resp.json().await?;
+            resp.get()?;
+            Ok(())
+        } else {
+            match resp.error_for_status() {
+                Ok(_) => todo!(),
+                Err(err) => Err(HueError::Reqwest(err)),
+            }
+        }
+    }
+
+    pub async fn get_all_light_levels(&self) -> crate::Result<Vec<LightLevelGet>> {
+        let url = format!("https://{}/clip/v2/resource/light_level", self.ip);
+        let resp: BridgeResponseV2<LightLevelGet> =
+            self.client.get(&url).send().await?.json().await?;
+        let mut light_levels = resp.get()?;
+        light_levels.sort_by(|a, b| a.id.cmp(&b.id));
+        Ok(light_levels)
     }
 
     pub fn events(&self) -> crate::Result<impl Stream<Item = HueEvent>> {
@@ -704,14 +912,33 @@ impl Bridge {
                     Ok(reqwest_eventsource::Event::Message(msg)) => {
                         log::debug!("message {:?}", msg.data);
                         match serde_json::from_str::<Vec<EventEnvelope>>(&msg.data) {
-                            Ok(mut event) => Some(HueEvent::Event {
-                                data: event.pop().unwrap().data,
-                            }),
-                            Err(e) => Some(HueEvent::Error(format!("{:?}", e))),
+                            Ok(events) => {
+                                log::debug!("events: {:?}", events);
+                                let data = events
+                                    .into_iter()
+                                    .flat_map(|event_envelope| event_envelope.data.into_iter())
+                                    .collect();
+                                Some(HueEvent::Event { data })
+                            }
+                            Err(e) => {
+                                let err = format!(
+                                    "serde_json::from_str::<Vec<EventEnvelope>>() error: {:?}\n{}",
+                                    e, &msg.data
+                                );
+                                log::error!("{}", err);
+                                Some(HueEvent::Error(err))
+                            }
                         }
                     }
-                    Ok(reqwest_eventsource::Event::Open) => None,
-                    Err(e) => Some(HueEvent::Error(format!("{:?}", e))),
+                    Ok(reqwest_eventsource::Event::Open) => {
+                        log::info!("reqwest_eventsource opened");
+                        None
+                    }
+                    Err(e) => {
+                        let err = format!("reqwest_eventsource error{:?}", e);
+                        log::error!("{}", err);
+                        Some(HueEvent::Error(err))
+                    }
                 }
             }),
         )
@@ -763,7 +990,7 @@ struct BridgeErrorV2 {
 }
 
 #[derive(Debug, serde::Deserialize)]
-struct BridgeResponseV2<T> {
+pub struct BridgeResponseV2<T> {
     errors: Vec<BridgeErrorV2>,
     data: Vec<T>,
 }
