@@ -1,7 +1,7 @@
 use crate::{HueError, HueError::DiscoveryError};
 use futures::executor::block_on;
 use futures_util::{pin_mut, stream::StreamExt};
-use mdns::{Record, RecordKind};
+use mdns_sd::ScopedIp;
 use serde_json::{Map, Value};
 use smol_timeout::TimeoutExt;
 use std::{net::IpAddr, time::Duration};
@@ -68,43 +68,40 @@ const SERVICE_NAME: &str = "_hue._tcp.local";
 // Define a function that discovers a hue bridge using mDNS
 pub async fn discover_hue_bridge_m_dns() -> Result<IpAddr, HueError> {
     // Iterate through responses from each hue bridge device, asking for new devices every 15s
-    let stream_disc = mdns::discover::all(SERVICE_NAME, Duration::from_secs(1));
-    let stream = match stream_disc {
-        Ok(s) => s.listen(),
-        Err(_e) => {
-            return Err(DiscoveryError {
-                msg: _e.to_string(),
-            })
+    let mdns = mdns_sd::ServiceDaemon::new().map_err(|e| DiscoveryError { msg: e.to_string() })?;
+    let receiver = mdns
+        .browse(SERVICE_NAME)
+        .map_err(|e| DiscoveryError { msg: e.to_string() })?;
+
+    let stream = receiver.into_stream().filter_map(|event| async {
+        match event {
+            mdns_sd::ServiceEvent::ServiceResolved(service) => Some(service),
+            _ => None,
         }
-    };
+    });
+
     pin_mut!(stream);
-    let response = stream.next().timeout(Duration::from_secs(5)).await;
-    match response.flatten() {
-        Some(Ok(response)) => {
-            // Get the first IP address from the response
-            let ip = response
-                .records()
-                .filter_map(to_ip_addr)
-                .next()
-                .ok_or(DiscoveryError {
-                    msg: "No IP address found in response".into(),
-                })?;
-            Ok(ip)
-        }
-        Some(Err(e)) => Err(DiscoveryError { msg: e.to_string() }),
+    let response = stream
+        .next()
+        .timeout(Duration::from_secs(5))
+        .await
+        .flatten();
+    let result = match response {
+        Some(service) => service
+            .get_addresses()
+            .iter()
+            .next()
+            .map(ScopedIp::to_ip_addr)
+            .ok_or_else(|| DiscoveryError {
+                msg: "No IP address found in response".into(),
+            }),
         None => Err(DiscoveryError {
             msg: "No response from bridge".into(),
         }),
-    }
-}
+    };
 
-// Define a helper function that converts a record to an IP address
-fn to_ip_addr(record: &Record) -> Option<IpAddr> {
-    match record.kind {
-        RecordKind::A(addr) => Some(addr.into()),
-        RecordKind::AAAA(addr) => Some(addr.into()),
-        _ => None,
-    }
+    let _ = mdns.shutdown();
+    result
 }
 
 #[cfg(test)]
