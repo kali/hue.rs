@@ -3,6 +3,7 @@ use futures::executor::block_on;
 use futures_util::{pin_mut, stream::StreamExt};
 use mdns::{Record, RecordKind};
 use serde_json::{Map, Value};
+use smol_timeout::TimeoutExt;
 use std::{net::IpAddr, time::Duration};
 
 // As Per instrucitons at
@@ -77,9 +78,9 @@ pub async fn discover_hue_bridge_m_dns() -> Result<IpAddr, HueError> {
         }
     };
     pin_mut!(stream);
-    let response = async_std::future::timeout(Duration::from_secs(5), stream.next()).await;
-    match response {
-        Ok(Some(Ok(response))) => {
+    let response = stream.next().timeout(Duration::from_secs(5)).await;
+    match response.flatten() {
+        Some(Ok(response)) => {
             // Get the first IP address from the response
             let ip = response
                 .records()
@@ -90,11 +91,8 @@ pub async fn discover_hue_bridge_m_dns() -> Result<IpAddr, HueError> {
                 })?;
             Ok(ip)
         }
-        Ok(Some(Err(e))) => Err(DiscoveryError { msg: e.to_string() }),
-        Ok(None) => Err(DiscoveryError {
-            msg: "No response from bridge".into(),
-        }),
-        Err(_e) => Err(DiscoveryError {
+        Some(Err(e)) => Err(DiscoveryError { msg: e.to_string() }),
+        None => Err(DiscoveryError {
             msg: "No response from bridge".into(),
         }),
     }
