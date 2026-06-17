@@ -20,7 +20,7 @@ async fn main() {
             match r {
                 Ok(r) => {
                     eprint!("done: ");
-                    println!("{}", r.application_key);
+                    println!("application_key(username):{}\n", r.application_key,);
                     break;
                 }
                 Err(HueError::BridgeError { code: 101, .. }) => {

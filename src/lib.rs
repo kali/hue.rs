@@ -6,6 +6,7 @@
 //! ```no_run
 //! # tokio_test::block_on(async {
 //! let bridge = hueclient::Bridge::discover_required()
+//!     .await
 //!     .register_application("mycomputer") // Press the bridge before running this
 //!     .await
 //!     .unwrap();
@@ -14,16 +15,20 @@
 //! ```
 //! ### Second run
 //! ```no_run
+//! # tokio_test::block_on(async {
 //! const USERNAME: &str = "the username that was generated in the previous example";
 //! let bridge = hueclient::Bridge::discover_required()
-//!    .with_user(USERNAME);
+//!     .await
+//!     .with_user(USERNAME);
+//! # })
 //! ```
 //! ### Good night
 //! ```no_run
 //! # tokio_test::block_on(async {
 //! # const USERNAME: &str = "the username that was generated in the previous example";
-//! # let bridge = hueclient::Bridge::discover_required()
-//! #   .with_user(USERNAME);
+//! #     let bridge = hueclient::Bridge::discover_required()
+//! #         .await
+//! #         .with_user(USERNAME);
 //! let cmd = hueclient::CommandLight::default().off();
 //! for light in &bridge.get_all_lights().await.unwrap() {
 //!     bridge.set_light_state(&light.id, &cmd).await.unwrap();
